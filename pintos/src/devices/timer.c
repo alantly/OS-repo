@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include <list.h>
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -30,6 +31,16 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
+/*  Number of threads sleeping  */
+struct list active_sleeps;
+
+/*  Sleep descriptors*/
+struct sleep_t {
+  struct list_elem elem; /* Element of 'active_sleeps' list.  */
+  struct semaphore sleep_sema; /* Up when sleep has finished. */
+  int64_t tick_destination; /* The specific tick to wake up at. */
+};
+
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -37,6 +48,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init(&active_sleeps);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -90,10 +102,17 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
-
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+
+  struct sleep_t sleep;
+  sema_init(&(sleep.sleep_sema),0);
+  sleep.tick_destination = start + ticks;
+
+  if (ticks > 0) {
+    list_push_back(&active_sleeps, &(sleep.elem));
+    sema_down(&(sleep.sleep_sema));
+  }
+  thread_yield();
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -165,12 +184,26 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+
+  if (!list_empty (&active_sleeps)) {
+    struct sleep_t *sleep;
+    struct list_elem *e;
+
+    for (e = list_begin (&active_sleeps); e != list_end (&active_sleeps) ; e = list_next (e)) {
+      sleep = list_entry (e,struct sleep_t,elem);
+      if (ticks >= sleep->tick_destination) {
+        list_remove (e);
+        sema_up (&(sleep->sleep_sema));
+      }
+    }
+  }
+
   thread_tick ();
 }
 
