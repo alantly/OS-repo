@@ -32,8 +32,8 @@ static void real_time_delay (int64_t num, int32_t denom);
 
 /*  Number of threads sleeping  */
 struct list active_sleeps;
-/*  A lock for active_sleeps */
-struct lock active_sleeps_lock;
+/*  A lock (semaphore) for active_sleeps */
+struct semaphore active_sleeps_semaphore;
 /*  Sleep descriptors*/
 struct sleep_t {
   struct list_elem elem; /* Element of 'active_sleeps' list.  */
@@ -49,7 +49,7 @@ timer_init (void)
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
   list_init(&active_sleeps);
-  lock_init (&active_sleeps_lock);
+  sema_init(&active_sleeps_semaphore, 1);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -110,9 +110,9 @@ timer_sleep (int64_t ticks)
   sleep.tick_destination = start + ticks;
 
   if (ticks > 0) {
-    lock_acquire(&active_sleeps_lock);
+    sema_down(&active_sleeps_semaphore);
     list_push_back(&active_sleeps, &(sleep.elem));
-    lock_release(&active_sleeps_lock);
+    sema_up(&active_sleeps_semaphore);
     sema_down(&(sleep.sleep_sema));
   }
   thread_yield();
@@ -193,18 +193,19 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-
-  if (!list_empty (&active_sleeps)) {
-    struct sleep_t *sleep;
-    struct list_elem *e;
-
-    for (e = list_begin (&active_sleeps); e != list_end (&active_sleeps) ; e = list_next (e)) {
-      sleep = list_entry (e,struct sleep_t,elem);
-      if (ticks >= sleep->tick_destination) {
-        list_remove (e);
-        sema_up (&(sleep->sleep_sema));
+  if (sema_try_down(&active_sleeps_semaphore)) {
+    if (!list_empty (&active_sleeps)) {
+      struct sleep_t *sleep;
+      struct list_elem *e;
+      for (e = list_begin (&active_sleeps); e != list_end (&active_sleeps) ; e = list_next (e)) {
+        sleep = list_entry (e,struct sleep_t,elem);
+        if (ticks >= sleep->tick_destination) {
+          list_remove (e);
+          sema_up (&(sleep->sleep_sema));
+        }
       }
     }
+    sema_up(&active_sleeps_semaphore);
   }
 
   thread_tick ();
