@@ -34,7 +34,7 @@ static void real_time_delay (int64_t num, int32_t denom);
 struct list active_sleeps;
 /*  A lock (semaphore) for active_sleeps */
 struct semaphore active_sleeps_semaphore;
-/*  Sleep descriptors*/
+/*  Sleep type  */
 struct sleep_t {
   struct list_elem elem; /* Element of 'active_sleeps' list.  */
   struct semaphore sleep_sema; /* Up when sleep has finished. */
@@ -110,10 +110,10 @@ timer_sleep (int64_t ticks)
   sleep.tick_destination = start + ticks;
 
   if (ticks > 0) {
-    sema_down(&active_sleeps_semaphore);
+    sema_down(&active_sleeps_semaphore); //lock active_sleeps
     list_push_back(&active_sleeps, &(sleep.elem));
-    sema_up(&active_sleeps_semaphore);
-    sema_down(&(sleep.sleep_sema));
+    sema_up(&active_sleeps_semaphore); //unlock active_sleeps
+    sema_down(&(sleep.sleep_sema)); //going to sleep
   }
   thread_yield();
 }
