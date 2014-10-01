@@ -32,6 +32,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+bool compare_cv_less (const struct list_elem *a, const struct list_elem *b, void *aux);
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -113,14 +115,17 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  // NEED TO DO THREAD_YIELD SOMEHOW
   if (!list_empty (&sema->waiters)) { 
     struct list_elem *next = list_max(&sema->waiters, compare_threads_less, NULL);
     list_remove(next);
+
     thread_unblock (list_entry (next, struct thread, elem));
   }
   sema->value++;
   intr_set_level (old_level);
+  if (!intr_context ()) {
+    thread_yield();
+  }
 }
 
 static void sema_test_helper (void *sema_);
@@ -319,9 +324,11 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
-  if (!list_empty (&cond->waiters)) 
-    sema_up (&list_entry (list_pop_front (&cond->waiters),
-                          struct semaphore_elem, elem)->semaphore);
+  if (!list_empty (&cond->waiters)) {
+    struct list_elem *next = list_max(&cond->waiters, compare_cv_less, NULL);
+    list_remove(next);
+    sema_up (&list_entry (next,struct semaphore_elem, elem)->semaphore);
+  }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
@@ -338,4 +345,14 @@ cond_broadcast (struct condition *cond, struct lock *lock)
 
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
+}
+
+bool compare_cv_less (const struct list_elem *a, const struct list_elem *b, void *aux) {
+  struct thread *thread1; /*elem a*/
+  struct thread *thread2; /*elem b*/
+  struct semaphore_elem *sema1 = list_entry(a,struct semaphore_elem,elem);
+  struct semaphore_elem *sema2 = list_entry(b,struct semaphore_elem,elem);
+  thread1 = list_entry (list_max(&sema1->semaphore.waiters,compare_threads_less,NULL), struct thread, elem);
+  thread2 = list_entry (list_max(&sema2->semaphore.waiters,compare_threads_less,NULL), struct thread, elem);
+  return thread1->priority < thread2->priority; //need to care about race??
 }
