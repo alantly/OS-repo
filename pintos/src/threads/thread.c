@@ -200,7 +200,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+  thread_yield();
   return tid;
 }
 
@@ -336,6 +336,9 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  if (list_entry (list_max(&ready_list, compare_threads_less, NULL), struct thread, elem) != thread_current ()) {
+    thread_yield();
+  } 
 }
 
 /* Returns the current thread's priority. */
@@ -492,8 +495,11 @@ next_thread_to_run (void)
 {
   if (list_empty (&ready_list))
     return idle_thread;
-  else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  else {
+    struct list_elem *next = list_max(&ready_list, compare_threads_less, NULL);
+    list_remove(next);
+    return list_entry (next, struct thread, elem);
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -582,3 +588,11 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+bool compare_threads_less (const struct list_elem *a, const struct list_elem *b, void *aux) {
+  struct thread *thread1; /*elem a*/
+  struct thread *thread2; /*elem b*/
+  thread1 = list_entry (a, struct thread, elem);
+  thread2 = list_entry (b, struct thread, elem);
+  return thread1->priority < thread2->priority; //need to care about race??
+}
