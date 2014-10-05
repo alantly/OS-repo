@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -290,7 +291,9 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
+  //free(thread_current ()->my_lock); 
   list_remove (&thread_current()->allelem);
+  //free(thread_current ()->my_lock); 
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -470,6 +473,9 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+
+  t->my_lock = malloc(sizeof(struct lock_node));
+  t->my_lock->t = t;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

@@ -17,12 +17,24 @@ bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
 
+/* Lock node */ 
+struct lock_node
+  {
+    struct list_elem lock_node_elem;
+    struct thread *t;
+    struct lock_node *parent;
+  };
+
 /* Lock. */
 struct lock 
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
+
+    struct lock_node *holder_node; 
   };
+
+struct list lock_node_list;
 
 void lock_init (struct lock *);
 void lock_acquire (struct lock *);
