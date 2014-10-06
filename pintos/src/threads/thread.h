@@ -84,9 +84,9 @@ typedef int tid_t;
 /* Lock node */ 
 struct lock_node
   {
-    struct list_elem lock_node_elem;
-    struct thread *t;
-    struct lock_node *parent;
+    struct list_elem lock_node_elem;  /* List element for all threads waiting or holding a lock. */
+    struct thread *t;                 /* The thread associated with the node. */
+    struct lock_node *parent;         /* The parent node holds the lock I am waiting for, else NULL */
   };
 
 struct thread
@@ -102,7 +102,7 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-    struct lock_node my_lock;
+    struct lock_node my_lock;           /* Lock_node element for priority donation graph. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
