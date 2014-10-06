@@ -47,8 +47,7 @@ struct kernel_thread_frame
   };
 
 /* Statistics. */
-static long long idle_ticks;    /* # of timer ticks spent idle. */
-static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
+static long long idle_ticks;    /* # of timer ticks spent idle. */ static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
 /* Scheduling. */
@@ -199,6 +198,7 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  t->my_lock = malloc(sizeof(struct lock_node));
   /* Add to run queue. */
   thread_unblock (t);
   thread_yield();
@@ -291,9 +291,8 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-  //free(thread_current ()->my_lock); 
+  free(thread_current ()->my_lock); 
   list_remove (&thread_current()->allelem);
-  //free(thread_current ()->my_lock); 
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -474,8 +473,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
 
-  t->my_lock = malloc(sizeof(struct lock_node));
-  t->my_lock->t = t;
+  //t->my_lock = malloc(sizeof(struct lock_node));
+  //t->my_lock->t = t;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

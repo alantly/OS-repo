@@ -33,15 +33,6 @@
 #include "threads/thread.h"
 
 bool compare_cv_less (const struct list_elem *a, const struct list_elem *b, void *aux);
-/*
-struct lock_node 
-  {
-    struct list_elem lock_path_elem;
-    struct thread *t;
-    struct lock_path_node *parent;
-    struct lock *current_lock;
-  };
-*/
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
