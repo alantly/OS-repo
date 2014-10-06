@@ -199,6 +199,8 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  /* Initialize reference to self in my_lock. */
+  t -> my_lock.t = t; 
 
   /* Add to run queue. */
   thread_unblock (t);
