@@ -213,7 +213,7 @@ lock_acquire (struct lock *lock)
   if (lock -> holder != cur_thread && lock -> holder != NULL) {
     cur_thread -> my_lock.parent = lock -> holder_node;
   }
-  printf("cur_thread: %s\n ", cur_thread -> name);
+  //printf("cur_thread: %s\n ", cur_thread -> name);
   list_push_back (&lock_node_list, &(cur_thread -> my_lock.lock_node_elem));
   
   // run update priority donation function
