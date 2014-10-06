@@ -17,13 +17,6 @@ bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
 
-/* Lock node */ 
-struct lock_node
-  {
-    struct list_elem lock_node_elem;
-    struct thread *t;
-    struct lock_node *parent;
-  };
 
 /* Lock. */
 struct lock 

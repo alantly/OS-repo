@@ -38,6 +38,7 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
   {
@@ -92,9 +93,9 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
+  list_init (&lock_node_list);
   /* Set up a thread structure for the running thread. */
-  initial_thread = running_thread ();
+  initial_thread = running_thread();
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
@@ -198,7 +199,7 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
-  t->my_lock = malloc(sizeof(struct lock_node));
+
   /* Add to run queue. */
   thread_unblock (t);
   thread_yield();
@@ -291,7 +292,6 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-  free(thread_current ()->my_lock); 
   list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
@@ -472,9 +472,6 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
-
-  //t->my_lock = malloc(sizeof(struct lock_node));
-  //t->my_lock->t = t;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

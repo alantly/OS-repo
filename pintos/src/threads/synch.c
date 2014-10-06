@@ -205,8 +205,25 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
+  
+  struct thread *cur_thread = thread_current();
+  
+  cur_thread -> my_lock.t = cur_thread;
+  
+  if (lock -> holder != cur_thread && lock -> holder != NULL) {
+    cur_thread -> my_lock.parent = lock -> holder_node;
+  }
+  printf("cur_thread: %s\n ", cur_thread -> name);
+  list_push_back (&lock_node_list, &(cur_thread -> my_lock.lock_node_elem));
+  
+  // run update priority donation function
   sema_down (&lock->semaphore);
+  
+  cur_thread -> my_lock.parent = NULL;
+
+  // the holder_node (lock_node) is my_lock (a lock_node)
+  lock -> holder_node = &(cur_thread -> my_lock);
+
   lock->holder = thread_current ();
 }
 
@@ -242,7 +259,10 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   lock->holder = NULL;
+  lock->holder_node = NULL;
+
   sema_up (&lock->semaphore);
+
 }
 
 /* Returns true if the current thread holds LOCK, false
