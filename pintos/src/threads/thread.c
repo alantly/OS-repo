@@ -201,6 +201,7 @@ thread_create (const char *name, int priority,
 
   /* Initialize reference to self in my_lock. */
   t -> my_lock.t = t; 
+  t -> my_lock.parent = NULL;
 
   /* Add to run queue. */
   thread_unblock (t);
