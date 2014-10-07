@@ -208,7 +208,7 @@ lock_acquire (struct lock *lock)
   
   struct thread *cur_thread = thread_current();
 
-  //interrupt disable or synch?    
+  // need interrupt disable or synch var
   if (lock -> holder != cur_thread && lock -> holder != NULL) {
     cur_thread -> my_lock.parent = lock -> holder_node;
   }
@@ -218,11 +218,13 @@ lock_acquire (struct lock *lock)
   // run update priority donation function
   sema_down (&lock->semaphore);
   
-  //interrupt disable or synch?
+  // need interrupt disable or synch var??
   cur_thread -> my_lock.parent = NULL;
 
   // the holder_node (lock_node) is my_lock (a lock_node)
   lock -> holder_node = &(cur_thread -> my_lock);
+
+  list_remove(&(lock->holder_node->lock_node_elem));
 
   lock->holder = thread_current ();
 }
@@ -258,8 +260,7 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  //need interrupt disable? or synch?
-  list_remove(&(lock->holder_node->lock_node_elem));
+  //need interrupt disabled or synch var
   lock->holder = NULL;
   lock->holder_node = NULL;
   sema_up (&lock->semaphore);
