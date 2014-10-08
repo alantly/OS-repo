@@ -208,7 +208,6 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   
   struct thread *cur_thread = thread_current();
-  cur_thread->old_priority = cur_thread->priority;
   
   // need interrupt disable or synch var
   if (lock -> holder != NULL) {
@@ -284,7 +283,7 @@ lock_release (struct lock *lock)
 
   //need interrupt disabled or synch var
   struct thread *cur_thread = thread_current();
-  cur_thread->priority = cur_thread->old_priority;
+  cur_thread->priority = cur_thread->fixed_priority;
   lock->holder = NULL;
   lock->holder_node = NULL;
   sema_up (&lock->semaphore);

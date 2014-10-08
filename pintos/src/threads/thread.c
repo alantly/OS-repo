@@ -342,6 +342,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  thread_current ()->fixed_priority = new_priority;
   if (list_entry (list_max(&ready_list, compare_threads_less, NULL), struct thread, elem) != thread_current ()) {
     thread_yield();
   } 
@@ -471,6 +472,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->fixed_priority = priority;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
