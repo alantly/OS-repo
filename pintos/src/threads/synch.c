@@ -33,6 +33,7 @@
 #include "threads/thread.h"
 
 bool compare_cv_less (const struct list_elem *a, const struct list_elem *b, void *aux);
+void donate_priority ();
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
@@ -207,19 +208,20 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   
   struct thread *cur_thread = thread_current();
-
-  // need interrupt disable or synch var
-  if (lock -> holder != cur_thread && lock -> holder != NULL) {
-    cur_thread -> my_lock.parent = lock -> holder_node;
-  }
-
-  list_push_back (&lock_node_list, &(cur_thread -> my_lock.lock_node_elem));
+  cur_thread->old_priority = cur_thread->priority;
   
-  // run update priority donation function
+  // need interrupt disable or synch var
+  if (lock -> holder != NULL) {
+    (cur_thread -> my_lock).parent = lock -> holder_node;
+    list_push_back (&lock_node_list, &(cur_thread -> my_lock.lock_node_elem));
+    donate_priority();
+  } else {
+    list_push_back (&lock_node_list, &(cur_thread -> my_lock.lock_node_elem));
+  }
   sema_down (&lock->semaphore);
   
   // need interrupt disable or synch var??
-  cur_thread -> my_lock.parent = NULL;
+  (cur_thread -> my_lock).parent = NULL;
 
   // the holder_node (lock_node) is my_lock (a lock_node)
   lock -> holder_node = &(cur_thread -> my_lock);
@@ -227,6 +229,26 @@ lock_acquire (struct lock *lock)
   list_remove(&(lock->holder_node->lock_node_elem));
 
   lock->holder = thread_current ();
+}
+
+void donate_priority () {
+  struct list_elem *elem;
+  struct lock_node *curr_tree_node;
+  int curr_max;
+  for (elem = list_begin(&lock_node_list); elem != list_end(&lock_node_list); elem = list_next(elem)) {
+    curr_tree_node = list_entry(elem,struct lock_node, lock_node_elem);
+    curr_max = PRI_MIN;
+    
+    while (curr_tree_node != NULL) {
+      int curr_tree_node_priority = (curr_tree_node -> t) -> priority;
+      if (curr_tree_node_priority > curr_max) {
+        curr_max = curr_tree_node_priority; 
+      } else {
+        (curr_tree_node -> t) -> priority = curr_max;
+      }
+      curr_tree_node = curr_tree_node -> parent;
+    }
+  }
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -261,6 +283,8 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   //need interrupt disabled or synch var
+  struct thread *cur_thread = thread_current();
+  cur_thread->priority = cur_thread->old_priority;
   lock->holder = NULL;
   lock->holder_node = NULL;
   sema_up (&lock->semaphore);

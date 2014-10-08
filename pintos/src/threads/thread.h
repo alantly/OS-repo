@@ -103,6 +103,7 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     struct lock_node my_lock;           /* Lock_node element for priority donation graph. */
+    int old_priority;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
