@@ -343,6 +343,7 @@ thread_set_priority (int new_priority)
 {
   thread_current ()->priority = new_priority;
   thread_current ()->fixed_priority = new_priority;
+  donate_priority();
   if (list_entry (list_max(&ready_list, compare_threads_less, NULL), struct thread, elem) != thread_current ()) {
     thread_yield();
   } 
