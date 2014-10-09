@@ -23,10 +23,12 @@ struct lock
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
-
     struct lock_node *holder_node; /* The current lock_node holding the lock. */
   };
 
+/*
+  This is a global lock_node list that is used to keep track
+  of all threads waiting on a lock using lock_nodes. */
 struct list lock_node_list;
 
 void lock_init (struct lock *);

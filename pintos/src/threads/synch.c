@@ -33,6 +33,7 @@
 #include "threads/thread.h"
 
 bool compare_cv_less (const struct list_elem *a, const struct list_elem *b, void *aux);
+
 void donate_priority_single (struct lock_node* curr_tree_node);
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
@@ -215,8 +216,12 @@ lock_acquire (struct lock *lock)
   
   enum intr_level old_level;
   struct thread *cur_thread = thread_current();
-  
-  // need interrupt disable or synch var
+
+  /*
+      if the lock is acquired we assign the current thread's my_lock.parent 
+      to holder_node, it to lock_node_list and donates its priority to its parent(s)
+      else we push the my_lock to lock_node_list
+  */  
   old_level = intr_disable();
   if (lock -> holder != NULL) {
     (cur_thread -> my_lock).parent = lock -> holder_node;
@@ -229,22 +234,27 @@ lock_acquire (struct lock *lock)
 
   sema_down (&lock->semaphore);
 
-  // need interrupt disable or synch var??
   old_level = intr_disable ();
-  //struct lock_node *nodie = list_entry(list_begin(mylist),struct lock_node, lock_node_elem);
-  // the holder_node (lock_node) is my_lock (a lock_node)
+
   lock -> holder_node = &(cur_thread -> my_lock);
 
+  /*
+      when the current thread acquires the lock, 
+      move the waiters.parent to point to thread_current lock_node
+  */
   struct list_elem *e;
   for (e = list_begin(&(lock->semaphore.waiters)); e != list_end(&(lock->semaphore.waiters)); e = list_next(e)) {
     list_entry(e,struct thread,elem)->my_lock.parent = lock->holder_node;
   }
 
   list_remove(&(lock->holder_node->lock_node_elem));
-  //
+
   lock->holder = thread_current ();
   intr_set_level (old_level);
 }
+
+/*  Given a lock_node, this function computes the 
+    maximum priority and donates it to its parents. */
 void donate_priority_single (struct lock_node* curr_tree_node) {
   int curr_max = PRI_MIN;  
   while (curr_tree_node != NULL) {
@@ -258,25 +268,18 @@ void donate_priority_single (struct lock_node* curr_tree_node) {
   }
 }
 
+/* traverse through the entire lock_node_list and
+   call donate_priority_single for each lock_node  */
 void donate_priority () {
   struct list_elem *elem;
   struct lock_node *curr_tree_node;
   int curr_max;
   for (elem = list_begin(&lock_node_list); elem != list_end(&lock_node_list); elem = list_next(elem)) {
     curr_tree_node = list_entry(elem,struct lock_node, lock_node_elem);
-    curr_max = PRI_MIN;
-    
-    while (curr_tree_node != NULL) {
-      int curr_tree_node_priority = (curr_tree_node -> t) -> priority;
-      if (curr_tree_node_priority > curr_max) {
-        curr_max = curr_tree_node_priority; 
-      } else {
-        (curr_tree_node -> t) -> priority = curr_max;
-      }
-      curr_tree_node = curr_tree_node -> parent;
-    }
+    donate_priority_single (curr_tree_node);
   }
 }
+
 
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
@@ -309,14 +312,11 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  //need interrupt disabled or synch var
   struct thread *cur_thread = thread_current();
   cur_thread->priority = cur_thread->fixed_priority;
   lock->holder = NULL;
   lock->holder_node = NULL;
-  //removed parent in sema_up
   sema_up (&lock->semaphore);
-
 }
 
 /* Returns true if the current thread holds LOCK, false

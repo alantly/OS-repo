@@ -99,7 +99,6 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-  initial_thread->my_lock.t = initial_thread; //set self
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -199,10 +198,6 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
-
-  /* Initialize reference to self in my_lock. */
-  t -> my_lock.t = t; 
-  t -> my_lock.parent = NULL;
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -475,6 +470,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->fixed_priority = priority;
   t->magic = THREAD_MAGIC;
+
+  /* Initialize my_lock. */
+  t -> my_lock.t = t; 
+  t -> my_lock.parent = NULL;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

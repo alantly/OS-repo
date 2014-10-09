@@ -103,7 +103,7 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     struct lock_node my_lock;           /* Lock_node element for priority donation graph. */
-    int fixed_priority;
+    int fixed_priority; /* Thread's original priority (before donation occurs). This value only changes with set_priority */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
