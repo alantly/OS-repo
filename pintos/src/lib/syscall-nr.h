@@ -18,7 +18,7 @@ enum
     SYS_TELL,                   /* Report current position in a file. */
     SYS_CLOSE,                  /* Close a file. */
     SYS_NULL,                   /* Returns arg incremented by 1 */
-
+    SYS_LEN
   };
 
 #endif /* lib/syscall-nr.h */
