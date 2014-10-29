@@ -63,8 +63,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   // Check if args is in user's address space and that it is mapped before dereferencing it
   uint32_t* args = ((uint32_t*) f->esp);
   if (!is_user_vaddr(f->esp) || !pagedir_get_page(thread_current ()->pagedir,f->esp)) {
-    args[1] = -1;
-    system_exit(args,f);
+    int input[2] = {0,-1};
+    system_exit(input,f);
   }
 
   syscall_functions_table[args[0]](args, f);
