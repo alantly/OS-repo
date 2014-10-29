@@ -96,6 +96,9 @@ thread_init (void)
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
+  
+  list_init(&(initial_thread->children));
+
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
 }
@@ -197,6 +200,20 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+
+  #ifdef USERPROG
+  //create and initialize shared data
+  list_init(&(t->children));
+  t->state = malloc(sizeof(struct wait_status));
+  struct wait_status *cur_state = t->state;
+  lock_init(&cur_state->lock);
+  sema_init(&cur_state->dead,0);
+  cur_state->status = 2;
+  cur_state->tid = t->tid;
+
+  struct thread *parent = thread_current();
+  list_push_back(&parent->children, &(cur_state->child));
+  #endif
 
   /* Add to run queue. */
   thread_unblock (t);

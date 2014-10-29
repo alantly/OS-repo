@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -96,11 +97,23 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    struct list children;       /*  a list of the process’ children */
+    struct wait_status *state;   /* Status of current process */
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+#ifdef USERPROG
+ struct wait_status {
+    struct list_elem child; // child of the children list
+    struct lock lock; //lock on status to ensure no race condition
+    int status; // integer specifying the status of the child
+    tid_t tid; // id of the child
+    int exit_code; // exit code for dead child
+    struct semaphore dead; // to specify the status of the child
+};
+#endif
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
