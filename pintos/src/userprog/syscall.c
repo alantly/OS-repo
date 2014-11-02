@@ -9,6 +9,7 @@
 #include "threads/synch.h"
 #include "threads/malloc.h"
 #include "userprog/pagedir.h"
+#include "filesys/filesys.h"
 
 typedef void system_handler_func (uint32_t*, struct intr_frame*);
 
@@ -18,6 +19,8 @@ system_handler_func system_null;
 system_handler_func system_halt;
 system_handler_func system_exec;
 system_handler_func system_wait;
+system_handler_func system_create;
+system_handler_func system_remove;
 
 
 system_handler_func *syscall_functions_table[SYS_LEN];
@@ -36,8 +39,8 @@ syscall_init (void)
   syscall_functions_table[SYS_WAIT]  = system_wait;
   //not implemented yet
 
-  syscall_functions_table[SYS_CREATE]   = system_exit;
-  syscall_functions_table[SYS_REMOVE]   = system_exit;
+  syscall_functions_table[SYS_CREATE]   = system_create;
+  syscall_functions_table[SYS_REMOVE]   = system_remove;
   syscall_functions_table[SYS_OPEN]   = system_exit;
   syscall_functions_table[SYS_FILESIZE] = system_exit;
   syscall_functions_table[SYS_READ]   = system_exit;
@@ -61,12 +64,11 @@ syscall_handler (struct intr_frame *f UNUSED)
   
   // printf("System call number: %d\n", args[0]);
   // Check if args is in user's address space and that it is mapped before dereferencing it
-  uint32_t* args = ((uint32_t*) f->esp);
   if (!is_user_vaddr(f->esp) || !pagedir_get_page(thread_current ()->pagedir,f->esp)) {
     int input[2] = {0,-1};
     system_exit(input,f);
   }
-
+  uint32_t* args = ((uint32_t*) f->esp);
   syscall_functions_table[args[0]](args, f);
 }
 
@@ -126,4 +128,20 @@ void system_null (uint32_t* args, struct intr_frame* f) {
 
 void system_halt (uint32_t* args UNUSED, struct intr_frame* f UNUSED) {
   shutdown_power_off();
+}
+
+void system_create (uint32_t* args, struct intr_frame* f) {
+  check_valid_addr (args[1], args, f);
+  char *file_name = (char *)args[1];
+  if (!file_name) {
+    args[1] = -1;
+    system_exit (args, f);
+  }
+  f->eax = filesys_create (file_name, (off_t)args[2]);
+}
+
+void system_remove (uint32_t* args, struct intr_frame* f) {
+  check_valid_addr (args[1], args, f);
+  char *file_name = (char *)args[1];
+  f->eax = filesys_remove(file_name);
 }
