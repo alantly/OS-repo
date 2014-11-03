@@ -80,7 +80,6 @@ void check_valid_addr(uint32_t* addr, uint32_t* args, struct intr_frame* f) {
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
-  
   // printf("System call number: %d\n", args[0]);
   // Check if args is in user's address space and that it is mapped before dereferencing it
   if (!is_user_vaddr(f->esp) || !pagedir_get_page(thread_current ()->pagedir,f->esp)) {
@@ -91,20 +90,21 @@ syscall_handler (struct intr_frame *f UNUSED)
   syscall_functions_table[args[0]](args, f);
 }
 
-struct semaphore exec_sema;
 
 void system_exec (uint32_t* args, struct intr_frame* f) {
   check_valid_addr(args[1], args, f);
-  sema_init(&exec_sema,0);
   f->eax = process_execute((char*)args[1]);
 }
 
 void system_wait (uint32_t* args, struct intr_frame* f) {
-    f->eax = process_wait(args[1]);
+  f->eax = process_wait(args[1]);
 }
 
 
 void system_exit (uint32_t* args, struct intr_frame* f) {
+  if (!is_user_vaddr(f->esp + sizeof(args[1]))) {
+    args[1] = -1;
+  }
   struct thread *cur_thread = thread_current();
   struct wait_status *cur_state = cur_thread->state;
   lock_acquire(&cur_state->lock);
@@ -120,7 +120,9 @@ void system_exit (uint32_t* args, struct intr_frame* f) {
   //for every children, decrement status and free if status == 0
   struct list_elem *elem;
   struct wait_status *cur_child_wait_status;
-  if (list_empty(&(cur_thread->children))) thread_exit();
+  if (list_empty(&(cur_thread->children))) {
+    thread_exit();
+  }
   elem = list_begin(&(cur_thread->children));
   while (elem != list_end(&(cur_thread->children))) {
     
@@ -146,13 +148,13 @@ void system_write (uint32_t* args, struct intr_frame* f) {
 
   if (fd == 1 && size > 0) {
     if ('\0' == NULL) {
-      printf("____\nHELLYA\n_____\n");
+      //printf("____\nHELLYA\n_____\n");
     }
     putbuf(buf,size);
     f->eax = size;
   } else {
     struct file_descriptor* cur_file_descriptor = find_fd(fd);
-    if (cur_file_descriptor) {
+    if (cur_file_descriptor && is_writeable(cur_file_descriptor->f) == 0) {
       f -> eax =file_write (cur_file_descriptor -> f, buf, size);
     } else {
       f -> eax = 0;
@@ -223,6 +225,10 @@ void system_tell (uint32_t* args, struct intr_frame* f) {
 
 void system_open (uint32_t* args, struct intr_frame* f) {
   check_valid_addr (args[1], args, f);
+  if (!is_user_vaddr(f->esp + sizeof(args[1]))) {
+    int input[2] = {0, -1};
+    system_exit (input, f);
+  }
   sema_down(&fs_sema);
   char *file_name = (char *)args[1];
   struct file* opened_file = filesys_open(file_name);
@@ -236,6 +242,9 @@ void system_open (uint32_t* args, struct intr_frame* f) {
     } else {
       struct thread* cur_thread = thread_current(); 
       list_push_back (&(cur_thread -> file_list), &(new_file_descriptor -> list_elem));
+      // Setting deny_write of the file to true to avoid executable of a running process from being modified
+      if (strcmp (cur_thread->name, file_name) == 0)
+        file_deny_write (opened_file);
       new_file_descriptor -> f  = opened_file;
       new_file_descriptor -> fd = fd_counter++;
       f -> eax = new_file_descriptor -> fd;
