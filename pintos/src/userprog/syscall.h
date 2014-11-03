@@ -3,4 +3,6 @@
 
 void syscall_init (void);
 
+struct semaphore fs_sema;
+
 #endif /* userprog/syscall.h */

@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -92,15 +93,16 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
-  
-  list_init(&(initial_thread->children));
+  sema_init(&fs_sema,1);
 
+  list_init(&(initial_thread->children));
+  list_init(&(initial_thread->file_list));
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -204,6 +206,7 @@ thread_create (const char *name, int priority,
   #ifdef USERPROG
   //create and initialize shared data
   list_init(&(t->children));
+  list_init(&(t->file_list));
   t->state = malloc(sizeof(struct wait_status));
   struct wait_status *cur_state = t->state;
   lock_init(&cur_state->lock);
@@ -484,6 +487,7 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

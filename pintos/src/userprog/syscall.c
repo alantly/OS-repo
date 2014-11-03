@@ -10,8 +10,16 @@
 #include "threads/malloc.h"
 #include "userprog/pagedir.h"
 #include "filesys/filesys.h"
+#include "filesys/file.h"
+#include <list.h>
 
 typedef void system_handler_func (uint32_t*, struct intr_frame*);
+
+struct file_descriptor* find_fd(int fd);
+
+
+
+int fd_counter = 2;
 
 system_handler_func system_exit;
 system_handler_func system_write;
@@ -21,11 +29,22 @@ system_handler_func system_exec;
 system_handler_func system_wait;
 system_handler_func system_create;
 system_handler_func system_remove;
-
+system_handler_func system_open;
+system_handler_func system_close;
+system_handler_func system_filesize;
+system_handler_func system_seek;
+system_handler_func system_tell;
+system_handler_func system_read;
 
 system_handler_func *syscall_functions_table[SYS_LEN];
 
 static void syscall_handler (struct intr_frame *);
+
+struct file_descriptor {
+  int fd;
+  struct file *f;
+  struct list_elem list_elem;
+};
 
 void
 syscall_init (void) 
@@ -37,16 +56,16 @@ syscall_init (void)
   syscall_functions_table[SYS_HALT]  = system_halt;
   syscall_functions_table[SYS_EXEC]  = system_exec;
   syscall_functions_table[SYS_WAIT]  = system_wait;
-  //not implemented yet
-
+  syscall_functions_table[SYS_OPEN]  = system_open;
+  syscall_functions_table[SYS_CLOSE] = system_close;
   syscall_functions_table[SYS_CREATE]   = system_create;
   syscall_functions_table[SYS_REMOVE]   = system_remove;
-  syscall_functions_table[SYS_OPEN]   = system_exit;
-  syscall_functions_table[SYS_FILESIZE] = system_exit;
-  syscall_functions_table[SYS_READ]   = system_exit;
-  syscall_functions_table[SYS_SEEK]   = system_exit;
-  syscall_functions_table[SYS_TELL]   = system_exit;
-  syscall_functions_table[SYS_CLOSE]    = system_exit;
+  syscall_functions_table[SYS_FILESIZE] = system_filesize;
+  syscall_functions_table[SYS_SEEK]   = system_seek;
+  syscall_functions_table[SYS_TELL]   = system_tell;
+  syscall_functions_table[SYS_READ]   = system_read;
+  
+  //not implemented yet
 }
 
 void check_valid_addr(uint32_t* addr, uint32_t* args, struct intr_frame* f) {
@@ -119,7 +138,28 @@ void system_exit (uint32_t* args, struct intr_frame* f) {
 }
 
 void system_write (uint32_t* args, struct intr_frame* f) {
-  printf("%s",args[2]); 
+  int fd = args[1];
+  char *buf = (char*) args[2];
+  uint32_t size = args[3];
+  check_valid_addr(buf, args, f);
+  sema_down(&fs_sema);
+
+  if (fd == 1 && size > 0) {
+    if ('\0' == NULL) {
+      printf("____\nHELLYA\n_____\n");
+    }
+    putbuf(buf,size);
+    f->eax = size;
+  } else {
+    struct file_descriptor* cur_file_descriptor = find_fd(fd);
+    if (cur_file_descriptor) {
+      f -> eax =file_write (cur_file_descriptor -> f, buf, size);
+    } else {
+      f -> eax = 0;
+    }
+  }
+  sema_up(&fs_sema);
+  return;
 }
 
 void system_null (uint32_t* args, struct intr_frame* f) {
@@ -145,3 +185,117 @@ void system_remove (uint32_t* args, struct intr_frame* f) {
   char *file_name = (char *)args[1];
   f->eax = filesys_remove(file_name);
 }
+
+void system_filesize (uint32_t* args, struct intr_frame* f) {
+  int fd = args[1];
+  sema_down(&fs_sema);
+  struct file_descriptor * new_fd = find_fd(fd);
+  if (new_fd == NULL) {
+    f->eax = 0;
+  } else {
+    f->eax = file_length(new_fd->f);
+  }
+  sema_up(&fs_sema);
+  return;
+}
+
+void system_seek (uint32_t* args, struct intr_frame* f) {
+  int fd  = args[1];
+  uint32_t pos = args[2];
+  sema_down(&fs_sema);
+  struct file_descriptor* cur_fd = find_fd(fd);
+  if (fd) {
+    file_seek (cur_fd -> f, pos);
+  }
+  sema_up(&fs_sema);
+}
+
+void system_tell (uint32_t* args, struct intr_frame* f) {
+  int fd  = args[1];
+  sema_down(&fs_sema);
+  struct file_descriptor* cur_fd = find_fd(fd);
+  f->eax = 0;
+  if (fd) {
+    f->eax = file_tell (cur_fd -> f);
+  }
+  sema_up(&fs_sema);
+}
+
+void system_open (uint32_t* args, struct intr_frame* f) {
+  check_valid_addr (args[1], args, f);
+  sema_down(&fs_sema);
+  char *file_name = (char *)args[1];
+  struct file* opened_file = filesys_open(file_name);
+  if (!opened_file) {
+    f->eax = -1; 
+  } else {
+    struct file_descriptor *new_file_descriptor = malloc(sizeof (struct file_descriptor));
+    if (!new_file_descriptor) {
+      file_close(opened_file);
+      f->eax = -1;
+    } else {
+      struct thread* cur_thread = thread_current(); 
+      list_push_back (&(cur_thread -> file_list), &(new_file_descriptor -> list_elem));
+      new_file_descriptor -> f  = opened_file;
+      new_file_descriptor -> fd = fd_counter++;
+      f -> eax = new_file_descriptor -> fd;
+    }
+  }
+  sema_up(&fs_sema);
+  return;
+}
+
+void system_close (uint32_t* args, struct intr_frame* f) {
+  int fd = args[1];
+  if (fd < 2) {
+    return;
+  }
+  struct list_elem *e;
+  struct thread* cur_thread = thread_current();
+
+  struct file_descriptor *cur_file_descriptor = find_fd(fd);
+  if (cur_file_descriptor) {
+    file_close (cur_file_descriptor -> f);
+    list_remove (&(cur_file_descriptor -> list_elem));
+    free (cur_file_descriptor);
+  }
+  return;
+}
+
+void system_read (uint32_t* args, struct intr_frame* f) {
+  int fd = args[1];
+  char *buf = (char*) args[2];
+  uint32_t size = args[3];
+  check_valid_addr(buf, args, f);
+  sema_down(&fs_sema);
+
+  if (fd == 0 && size > 0) {
+    buf[0] = input_getc();
+    f -> eax = 1;
+  } else {
+    struct file_descriptor* cur_file_descriptor = find_fd(fd);
+    if (cur_file_descriptor) {
+      f -> eax =file_read (cur_file_descriptor -> f, buf, size);
+    } else {
+      f -> eax = -1;
+    }
+  }
+  sema_up(&fs_sema);
+  return;
+}
+
+struct file_descriptor* find_fd(int fd) {
+  struct list_elem *e;
+  struct thread* cur_thread = thread_current();
+  struct file_descriptor * cur_file_descriptor = NULL;
+
+  for (e = list_begin(&(cur_thread -> file_list)); e != list_end (&(cur_thread -> file_list));
+       e = list_next (e)) {
+      cur_file_descriptor = list_entry(e, struct file_descriptor, list_elem);
+      if (cur_file_descriptor -> fd == fd) {
+        return cur_file_descriptor;
+      }    
+    }
+  return cur_file_descriptor;
+}
+

@@ -99,6 +99,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
     struct list children;       /*  a list of the process’ children */
     struct wait_status *state;   /* Status of current process */
+    struct list file_list;
 #endif
 
     /* Owned by thread.c. */
