@@ -166,3 +166,7 @@ file_tell (struct file *file)
   ASSERT (file != NULL);
   return file->pos;
 }
+
+int is_writeable (struct file *file) {
+  return file->deny_write;
+}
