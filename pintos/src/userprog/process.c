@@ -153,6 +153,37 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  struct wait_status *cur_state = cur->state;
+  lock_acquire(&cur_state->lock);
+  printf("%s: exit(%d)\n",cur->name,cur_state->exit_code);
+  sema_up(&(cur_state->dead));
+  cur_state->status--;
+  lock_release(&cur_state->lock);
+  if (cur_state->status == 0)
+    free (cur_state);
+
+  struct list_elem *elem;
+  struct wait_status *cur_child_wait_status;
+  
+  if (list_empty(&(cur->children))) {
+    goto done;
+  }
+  
+  elem = list_begin(&(cur->children));
+  while (elem != list_end(&(cur->children))) {
+    
+    cur_child_wait_status = list_entry(elem,struct wait_status, child);
+    elem = list_next(elem);
+    lock_acquire(&cur_child_wait_status->lock);
+    cur_child_wait_status->status--;
+    lock_release(&cur_child_wait_status->lock);
+    if (cur_child_wait_status->status == 0) { //parent dead, child alive
+      list_remove(list_prev(&elem));
+      free(cur_child_wait_status);
+    }
+  }
+
+  done:
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

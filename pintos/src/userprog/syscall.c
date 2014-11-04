@@ -109,15 +109,19 @@ void system_exit (uint32_t* args, struct intr_frame* f) {
   struct wait_status *cur_state = cur_thread->state;
   lock_acquire(&cur_state->lock);
   cur_state->exit_code = args[1]; //save exit code
-  printf("%s: exit(%d)\n",cur_thread->name,cur_state->exit_code);
+
+  //printf("%s: exit(%d)\n",cur_thread->name,cur_state->exit_code);
+  /*
   sema_up(&(cur_state->dead));
   cur_state->status--;
+  */
   lock_release(&cur_state->lock);
   if (cur_state->status == 0) { //parent dead, child alive
     free(cur_state);
   }
   
   //for every children, decrement status and free if status == 0
+  /*
   struct list_elem *elem;
   struct wait_status *cur_child_wait_status;
   if (list_empty(&(cur_thread->children))) {
@@ -136,6 +140,7 @@ void system_exit (uint32_t* args, struct intr_frame* f) {
       free(cur_child_wait_status);
     }
   }
+  */
   thread_exit();
 }
 
@@ -161,7 +166,6 @@ void system_write (uint32_t* args, struct intr_frame* f) {
     }
   }
   sema_up(&fs_sema);
-  return;
 }
 
 void system_null (uint32_t* args, struct intr_frame* f) {
@@ -198,7 +202,6 @@ void system_filesize (uint32_t* args, struct intr_frame* f) {
     f->eax = file_length(new_fd->f);
   }
   sema_up(&fs_sema);
-  return;
 }
 
 void system_seek (uint32_t* args, struct intr_frame* f) {
@@ -224,11 +227,14 @@ void system_tell (uint32_t* args, struct intr_frame* f) {
 }
 
 void system_open (uint32_t* args, struct intr_frame* f) {
+  
   check_valid_addr (args[1], args, f);
+  /*
   if (!is_user_vaddr(f->esp + sizeof(args[1]))) {
     int input[2] = {0, -1};
     system_exit (input, f);
   }
+  */
   sema_down(&fs_sema);
   char *file_name = (char *)args[1];
   struct file* opened_file = filesys_open(file_name);
@@ -251,7 +257,6 @@ void system_open (uint32_t* args, struct intr_frame* f) {
     }
   }
   sema_up(&fs_sema);
-  return;
 }
 
 void system_close (uint32_t* args, struct intr_frame* f) {
@@ -268,7 +273,6 @@ void system_close (uint32_t* args, struct intr_frame* f) {
     list_remove (&(cur_file_descriptor -> list_elem));
     free (cur_file_descriptor);
   }
-  return;
 }
 
 void system_read (uint32_t* args, struct intr_frame* f) {
@@ -290,7 +294,6 @@ void system_read (uint32_t* args, struct intr_frame* f) {
     }
   }
   sema_up(&fs_sema);
-  return;
 }
 
 struct file_descriptor* find_fd(int fd) {
@@ -307,4 +310,3 @@ struct file_descriptor* find_fd(int fd) {
     }
   return cur_file_descriptor;
 }
-
