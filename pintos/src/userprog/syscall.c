@@ -70,7 +70,7 @@ syscall_init (void)
 
 void check_valid_addr(uint32_t* addr, uint32_t* args, struct intr_frame* f) {
 
-  if (!is_user_vaddr (addr) || !pagedir_get_page (thread_current ()->pagedir, addr)) {
+  if (!is_user_vaddr (addr) || pagedir_get_page (thread_current ()->pagedir, addr) == NULL) {
     args[1] = -1;
     system_exit (args, f);
   }
@@ -82,7 +82,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   // printf("System call number: %d\n", args[0]);
   // Check if args is in user's address space and that it is mapped before dereferencing it
-  if (!is_user_vaddr(f->esp) || !pagedir_get_page(thread_current ()->pagedir,f->esp)) {
+  if (!is_user_vaddr(f->esp) || pagedir_get_page(thread_current ()->pagedir,f->esp) == NULL) {
     int input[2] = {0,-1};
     system_exit(input,f);
   }
@@ -109,38 +109,7 @@ void system_exit (uint32_t* args, struct intr_frame* f) {
   struct wait_status *cur_state = cur_thread->state;
   lock_acquire(&cur_state->lock);
   cur_state->exit_code = args[1]; //save exit code
-
-  //printf("%s: exit(%d)\n",cur_thread->name,cur_state->exit_code);
-  /*
-  sema_up(&(cur_state->dead));
-  cur_state->status--;
-  */
   lock_release(&cur_state->lock);
-  if (cur_state->status == 0) { //parent dead, child alive
-    free(cur_state);
-  }
-  
-  //for every children, decrement status and free if status == 0
-  /*
-  struct list_elem *elem;
-  struct wait_status *cur_child_wait_status;
-  if (list_empty(&(cur_thread->children))) {
-    thread_exit();
-  }
-  elem = list_begin(&(cur_thread->children));
-  while (elem != list_end(&(cur_thread->children))) {
-    
-    cur_child_wait_status = list_entry(elem,struct wait_status, child);
-    elem = list_next(elem);
-    lock_acquire(&cur_child_wait_status->lock);
-    cur_child_wait_status->status--;
-    lock_release(&cur_child_wait_status->lock);
-    if (cur_child_wait_status->status == 0) { //parent dead, child alive
-      list_remove(list_prev(&elem));
-      free(cur_child_wait_status);
-    }
-  }
-  */
   thread_exit();
 }
 
@@ -149,12 +118,11 @@ void system_write (uint32_t* args, struct intr_frame* f) {
   char *buf = (char*) args[2];
   uint32_t size = args[3];
   check_valid_addr(buf, args, f);
+  check_valid_addr(buf + size, args, f);
+
   sema_down(&fs_sema);
 
   if (fd == 1 && size > 0) {
-    if ('\0' == NULL) {
-      //printf("____\nHELLYA\n_____\n");
-    }
     putbuf(buf,size);
     f->eax = size;
   } else {
@@ -166,6 +134,7 @@ void system_write (uint32_t* args, struct intr_frame* f) {
     }
   }
   sema_up(&fs_sema);
+  return;
 }
 
 void system_null (uint32_t* args, struct intr_frame* f) {
@@ -227,14 +196,11 @@ void system_tell (uint32_t* args, struct intr_frame* f) {
 }
 
 void system_open (uint32_t* args, struct intr_frame* f) {
-  
   check_valid_addr (args[1], args, f);
-  /*
   if (!is_user_vaddr(f->esp + sizeof(args[1]))) {
     int input[2] = {0, -1};
     system_exit (input, f);
   }
-  */
   sema_down(&fs_sema);
   char *file_name = (char *)args[1];
   struct file* opened_file = filesys_open(file_name);
@@ -280,6 +246,7 @@ void system_read (uint32_t* args, struct intr_frame* f) {
   char *buf = (char*) args[2];
   uint32_t size = args[3];
   check_valid_addr(buf, args, f);
+  check_valid_addr(buf + size, args, f);
   sema_down(&fs_sema);
 
   if (fd == 0 && size > 0) {
