@@ -19,7 +19,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-static struct semaphore temporary;
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static bool pass_arg (void **esp, const char* file_name);
@@ -34,7 +34,6 @@ process_execute (const char *file_name)
   char *fn_copy, *f_copy, *token, *save_ptr;
   tid_t tid;
 
-  sema_init(&temporary, 0);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -48,6 +47,10 @@ process_execute (const char *file_name)
   token = strtok_r (f_copy, " ", &save_ptr);
 
   /* Create a new thread to execute FILE_NAME. */
+
+  struct semaphore finish_loading_sema;
+  sema_init(&finish_loading_sema, 0);
+  thread_current() -> finish_loading_sema = &finish_loading_sema;
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
@@ -58,7 +61,7 @@ process_execute (const char *file_name)
   free (f_copy);
 
   //wait for start_process to finish.
-  sema_down(&temporary);
+  sema_down(&finish_loading_sema);
   struct thread *cur_thread = thread_current();
   struct wait_status *cur_child_wait_status;
   struct list_elem *elem = list_begin(&(cur_thread->children));
@@ -90,14 +93,16 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-  sema_up(&temporary);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
     (thread_current()->state)->exit_code = -1;
+    sema_up(thread_current() -> finish_loading_sema);
     thread_exit ();
   }
+
+  sema_up(thread_current() -> finish_loading_sema);
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -159,8 +164,9 @@ process_exit (void)
   sema_up(&(cur_state->dead));
   cur_state->status--;
   lock_release(&cur_state->lock);
-  if (cur_state->status == 0)
+  if (cur_state->status == 0) {
     free(cur_state);
+  }
   
   //for every children, decrement status and free if status == 0
   struct list_elem *elem;
@@ -196,7 +202,6 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-    sema_up(&temporary);
 }
 
 /* Sets up the CPU for running user code in the current

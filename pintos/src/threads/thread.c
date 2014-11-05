@@ -103,6 +103,9 @@ thread_init (void)
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
 
+  sema_init(&temporary, 0);
+
+
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -216,6 +219,8 @@ thread_create (const char *name, int priority,
 
   struct thread *parent = thread_current();
   list_push_back(&parent->children, &(cur_state->child));
+
+  t->finish_loading_sema = parent->finish_loading_sema;
   #endif
 
   /* Add to run queue. */
