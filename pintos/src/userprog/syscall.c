@@ -40,11 +40,6 @@ system_handler_func *syscall_functions_table[SYS_LEN];
 
 static void syscall_handler (struct intr_frame *);
 
-struct file_descriptor {
-  int fd;
-  struct file *f;
-  struct list_elem list_elem;
-};
 
 void
 syscall_init (void) 

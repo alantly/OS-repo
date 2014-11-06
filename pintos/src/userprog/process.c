@@ -18,6 +18,9 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
+#include "userprog/syscall.h"
+
 
 
 static thread_func start_process NO_RETURN;
@@ -62,6 +65,7 @@ process_execute (const char *file_name)
 
   //wait for start_process to finish.
   sema_down(&finish_loading_sema);
+
   struct thread *cur_thread = thread_current();
   struct wait_status *cur_child_wait_status;
   struct list_elem *elem = list_begin(&(cur_thread->children));
@@ -176,13 +180,23 @@ process_exit (void)
     while (elem != list_end(&(cur->children))) {   
       cur_child_wait_status = list_entry(elem,struct wait_status, child);
       elem = list_next(elem);
-      lock_acquire(&cur_child_wait_status->lock);
       cur_child_wait_status->status--;
-      lock_release(&cur_child_wait_status->lock);
       if (cur_child_wait_status->status == 0) { //parent dead, child alive
         list_remove(list_prev(&elem));
         free(cur_child_wait_status);
       }
+    }
+  }
+
+  if (!list_empty(&(cur -> file_list))) {
+    struct file_descriptor *fd;
+    elem = list_begin(&(cur->file_list));
+    while (elem != list_end(&(cur -> file_list))) {
+       fd = list_entry(elem, struct file_descriptor, list_elem);
+       file_close (fd -> f);
+       elem = list_next(elem);
+       list_remove(list_prev(elem));
+       free(fd);
     }
   }
 

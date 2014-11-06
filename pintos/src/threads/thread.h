@@ -101,9 +101,7 @@ struct thread
     struct wait_status *state;   /* Status of current process */
     struct list file_list;
     struct semaphore *finish_loading_sema;
-
 #endif
-
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
