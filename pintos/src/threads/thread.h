@@ -99,8 +99,8 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
     struct list children;       /*  a list of the process’ children */
     struct wait_status *state;   /* Status of current process */
-    struct list file_list;
-    struct semaphore *finish_loading_sema;
+    struct list file_list;  /* a list of file descriptor */
+    struct semaphore *finish_loading_sema; /* a pointer to a shared lock to ensure that the child process gets loaded before returning to the parent process */
 #endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

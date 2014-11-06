@@ -7,6 +7,7 @@
 
 void syscall_init (void);
 
+// global semaphore for file system
 struct semaphore fs_sema;
 
 struct file_descriptor {

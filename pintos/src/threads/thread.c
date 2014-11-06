@@ -96,6 +96,7 @@ thread_init (void)
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
+
   sema_init(&fs_sema,1);
 
   list_init(&(initial_thread->children));
@@ -217,7 +218,7 @@ thread_create (const char *name, int priority,
 
   struct thread *parent = thread_current();
   list_push_back(&parent->children, &(cur_state->child));
-
+  
   t->finish_loading_sema = parent->finish_loading_sema;
   #endif
 

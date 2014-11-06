@@ -51,6 +51,7 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
 
+  // a lock that ensures that the child process finishes loading before going back to the parent thread
   struct semaphore finish_loading_sema;
   sema_init(&finish_loading_sema, 0);
   thread_current() -> finish_loading_sema = &finish_loading_sema;
@@ -66,6 +67,7 @@ process_execute (const char *file_name)
   //wait for start_process to finish.
   sema_down(&finish_loading_sema);
 
+  // free shared data structure if the child's process failed loading
   struct thread *cur_thread = thread_current();
   struct wait_status *cur_child_wait_status;
   struct list_elem *elem = list_begin(&(cur_thread->children));
@@ -137,6 +139,7 @@ process_wait (tid_t child_tid UNUSED)
 
   if (list_empty(&(cur_thread->children))) return -1;
 
+  // find the shared data of the child tid 
   elem = list_begin(&(cur_thread->children));
   while (elem != list_end(&(cur_thread->children)) && !found ) {
     cur_child_wait_status = list_entry(elem,struct wait_status, child);
@@ -145,9 +148,10 @@ process_wait (tid_t child_tid UNUSED)
     }
     elem = list_next(elem);
   }
-
+  // if we can't find a child, return -1
   if (!found) return -1;
 
+  // sleep the parent process and let the child run until the child exits
   sema_down (&(cur_child_wait_status -> dead));
   exit_code = cur_child_wait_status -> exit_code;
   list_remove(&cur_child_wait_status -> child);
@@ -188,6 +192,7 @@ process_exit (void)
     }
   }
 
+  // when a process exits, we free all file descriptors that the process hasn't closed
   if (!list_empty(&(cur -> file_list))) {
     struct file_descriptor *fd;
     elem = list_begin(&(cur->file_list));
