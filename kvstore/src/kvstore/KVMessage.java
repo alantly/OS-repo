@@ -90,6 +90,9 @@ public class KVMessage implements Serializable {
         } catch (IOException e) {
             throw new KVException(KVConstants.ERROR_COULD_NOT_RECEIVE_DATA);
         } catch (JAXBException e) {
+            if (e.getCause() instanceof IOException) {
+                throw new KVException(KVConstants.ERROR_COULD_NOT_RECEIVE_DATA);
+            }
             throw new KVException(KVConstants.ERROR_PARSER);
         }
     }
