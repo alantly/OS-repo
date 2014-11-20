@@ -48,4 +48,25 @@ public class KVStoreTest {
         assertEquals(val, store.get(key));
     }
 
+    @Test(timeout = kTimeoutQuick)
+    @Category(AG_PROJ3_CODE.class)
+    @AGTestDetails(points = 1,
+        desc = "Test dump files")
+    public void testDumpfiles() throws KVException {
+        store.put("key1", "value1");
+        store.put("key2", "value2");
+        store.put("key3", "value3");
+        store.dumpToFile("test.txt");
+    }
+
+    @Test(timeout = kTimeoutQuick)
+    @Category(AG_PROJ3_CODE.class)
+    @AGTestDetails(points = 1,
+        desc = "Test read from dumpfiles and store to the store")
+    public void testReadFromDumpfiles() throws KVException {
+       store.restoreFromFile("test.txt");
+       assertEquals("value1", store.get("key1"));
+       assertEquals("value2", store.get("key2"));
+       assertEquals("value3", store.get("key3"));
+    }
 }

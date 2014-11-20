@@ -17,6 +17,10 @@ import kvstore.xml.KVPairType;
 import kvstore.xml.KVStoreType;
 import kvstore.xml.ObjectFactory;
 
+import java.util.List;
+import java.io.FileOutputStream;
+
+
 
 /**
  * This is a basic key-value store. Ideally this would go to disk, or some other
@@ -135,6 +139,13 @@ public class KVStore implements KeyValueInterface {
      */
     public void dumpToFile(String fileName) {
         // implement me
+        try {
+            OutputStream os = new FileOutputStream(fileName);
+            marshalTo(os);
+        } catch (Exception e) {
+            // do nothing
+        }
+        return;
     }
 
     /**
@@ -147,7 +158,17 @@ public class KVStore implements KeyValueInterface {
      */
     public void restoreFromFile(String fileName) {
         resetStore();
-
         // implement me
+        File f = new File(fileName);
+        try {
+            KVStoreType kvst = unmarshal(f);
+            List<KVPairType> kv_list = kvst.getKVPair();
+            for (KVPairType kv_pair : kv_list) {
+                this.store.put(kv_pair.getKey(), kv_pair.getValue());
+            }
+        } catch (JAXBException e) {
+            // can be dropped
+        }
+        return;
     }
 }
