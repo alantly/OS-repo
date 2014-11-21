@@ -1,11 +1,17 @@
 package kvstore;
 
+import java.util.LinkedList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Condition;
 
 public class ThreadPool {
 
     /* Array of threads in the threadpool */
     public Thread threads[];
-
+    public LinkedList<Runnable> job_list;
+    final Lock lock;
+    final Condition hasElements;
 
     /**
      * Constructs a Threadpool with a certain number of threads.
@@ -13,8 +19,15 @@ public class ThreadPool {
      * @param size number of threads in the thread pool
      */
     public ThreadPool(int size) {
-        threads = new Thread[size];
+        job_list = new LinkedList<Runnable>();
+        lock = new ReentrantLock();
+        hasElements = lock.newCondition();
 
+        threads = new Thread[size];
+        for (int i = 0; i < size; i++) {
+            threads[i] = new WorkerThread(this);
+            threads[i].start();
+        }
         // implement me
     }
 
@@ -29,6 +42,10 @@ public class ThreadPool {
      */
     public void addJob(Runnable r) throws InterruptedException {
         // implement me
+        lock.lock();
+        job_list.add(r);
+        hasElements.signal();
+        lock.unlock();
     }
 
     /**
@@ -39,7 +56,13 @@ public class ThreadPool {
      */
     public Runnable getJob() throws InterruptedException {
         // implement me
-        return null;
+        lock.lock();
+        while (job_list.isEmpty()){
+            hasElements.await();
+        }
+        Runnable job = job_list.removeFirst();
+        lock.unlock();
+        return job;
     }
 
     /**
@@ -63,6 +86,14 @@ public class ThreadPool {
          */
         @Override
         public void run() {
+           while(true) {
+                try {
+                    Runnable job = threadPool.getJob();
+                    job.run();
+                } catch (InterruptedException ite) {
+
+                }
+           }
             // implement me
         }
     }

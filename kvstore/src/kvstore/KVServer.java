@@ -42,6 +42,22 @@ public class KVServer implements KeyValueInterface {
     @Override
     public void put(String key, String value) throws KVException {
         // implement me
+        // can get lock from this.dataCache.getLock(key)
+        if (key.length() > MAX_KEY_SIZE)
+            throw new KVException(KVConstants.ERROR_OVERSIZED_KEY);
+        else if (value.length() > MAX_VAL_SIZE)
+            throw new KVException(KVConstants.ERROR_OVERSIZED_VALUE);
+
+        Lock cachelock = this.dataCache.getLock(key);
+
+        try {     
+            cachelock.lock();
+            this.dataStore.put(key, value);
+            this.dataCache.put(key, value);
+        }
+        finally {
+            cachelock.unlock();
+        }
     }
 
     /**
@@ -55,7 +71,32 @@ public class KVServer implements KeyValueInterface {
     @Override
     public String get(String key) throws KVException {
         // implement me
-        return null;
+        String cacheValue = null;
+        String storeValue = null;
+        String returnValue = null;
+
+        Lock cachelock = this.dataCache.getLock(key);
+
+        try {
+            cachelock.lock();
+            cacheValue = this.dataCache.get(key);
+            if (cacheValue == null) {
+                storeValue = this.dataStore.get(key);
+                this.dataCache.put(key, storeValue);
+                returnValue = storeValue;
+            }
+            else
+                returnValue = cacheValue;
+        }
+        catch (KVException kve) {
+            throw kve;
+        }
+        finally {
+
+            cachelock.unlock();
+        }
+
+        return returnValue;
     }
 
     /**
@@ -67,6 +108,19 @@ public class KVServer implements KeyValueInterface {
     @Override
     public void del(String key) throws KVException {
         // implement me
+        Lock cachelock = this.dataCache.getLock(key);
+
+        try {
+            cachelock.lock();
+            this.dataStore.del(key);
+            this.dataCache.del(key);
+        }
+        catch (KVException kve) {
+            throw kve;
+        }
+        finally {
+            cachelock.unlock();
+        }
     }
 
     /**
@@ -78,8 +132,13 @@ public class KVServer implements KeyValueInterface {
      * @param key key to check for membership in store
      */
     public boolean hasKey(String key) {
-        // implement me
-        return false;
+        String value = null;
+        try {
+            value = this.dataStore.get(key);
+        }
+        catch (KVException kve) {}
+        
+        return !(value == null);
     }
 
     /** This method is purely for convenience and will not be tested. */
