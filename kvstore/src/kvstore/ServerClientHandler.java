@@ -8,6 +8,7 @@ import static kvstore.KVConstants.SUCCESS;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.io.InputStream;
 
 /**
  * This NetworkHandler will asynchronously handle the socket connections.
@@ -36,6 +37,8 @@ public class ServerClientHandler implements NetworkHandler {
      */
     public ServerClientHandler(KVServer kvServer, int connections) {
         // implement me
+        this.threadPool = new ThreadPool(connections);
+        this.kvServer = kvServer;
     }
 
     /**
@@ -47,8 +50,45 @@ public class ServerClientHandler implements NetworkHandler {
     @Override
     public void handle(Socket client) {
         // implement me
+        ServerClientHandlerRunner job = new ServerClientHandlerRunner(client, kvServer);
+        try {
+            threadPool.addJob(job);
+        }
+        catch (InterruptedException e) {
+            // ignore any InterruptedExceptions like suggested above
+        }
+        
     }
-    
-    // implement me
+
+    public class ServerClientHandlerRunner implements Runnable {
+        private Socket client;
+        private KVServer kvServer;
+
+        public ServerClientHandlerRunner(Socket client, KVServer kvServer) {
+            this.client = client;
+            this.kvServer = kvServer;
+        }
+        // implement me
+        @Override
+        public void run() {
+            try {
+                KVMessage kvm = new KVMessage(client);
+                KVMessage response_kvm = new KVMessage(RESP, SUCCESS);
+                if (kvm.getMsgType() == DEL_REQ) {
+                    kvServer.del(kvm.getKey());
+                } else if (kvm.getMsgType() == GET_REQ) {
+                    String value = kvServer.get(kvm.getKey());
+                    response_kvm.setMessage(null);
+                    response_kvm.setKey(kvm.getKey());
+                    response_kvm.setValue(value);
+                } else if (kvm.getMsgType() == PUT_REQ) {
+                    kvServer.put(kvm.getKey(), kvm.getValue());
+                }
+                response_kvm.sendMessage(client);
+            } catch (KVException kve) {
+                // need to send error KVMessage?
+            }
+        }
+    }
 
 }
