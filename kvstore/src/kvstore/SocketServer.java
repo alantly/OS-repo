@@ -66,6 +66,8 @@ public class SocketServer {
      */
     public void connect() throws IOException {
         // implement me
+        this.server = new ServerSocket(this.port);
+        this.port = server.getLocalPort();
     }
 
     /**
@@ -78,6 +80,10 @@ public class SocketServer {
      */
     public void start() throws IOException {
      // implement me
+        this.server.setSoTimeout(TIMEOUT);
+        while (stopped != true) {
+           this.server.accept();
+        }
     }
 
     /**
