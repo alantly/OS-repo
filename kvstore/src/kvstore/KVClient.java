@@ -94,6 +94,12 @@ public class KVClient implements KeyValueInterface {
         catch (KVException kve) {
             throw kve; // Not sure this is going to work
         } 
+
+        String responseMessage = response.getMessage();
+        if (responseMessage != null) {
+            if (!responseMessage.equals(KVConstants.SUCCESS))
+            throw new KVException(response.getMessage());
+        }
     }
 
     /**
@@ -128,6 +134,12 @@ public class KVClient implements KeyValueInterface {
         
         if (response.getValue() == null)
             throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
+
+        String responseMessage = response.getMessage();
+        if (responseMessage != null) {
+            if (!responseMessage.equals(KVConstants.SUCCESS))
+            throw new KVException(response.getMessage());
+        }
         
         return response.getValue();
     }
@@ -157,6 +169,12 @@ public class KVClient implements KeyValueInterface {
         }
         catch (KVException kve) {
             throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
+        }
+
+        String responseMessage = response.getMessage();
+        if (responseMessage != null) {
+            if (!responseMessage.equals(KVConstants.SUCCESS))
+            throw new KVException(response.getMessage());
         }
     }
 }
