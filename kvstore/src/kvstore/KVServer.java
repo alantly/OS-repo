@@ -76,6 +76,7 @@ public class KVServer implements KeyValueInterface {
         String returnValue = null;
 
         Lock cachelock = this.dataCache.getLock(key);
+        System.out.println("IN GET HERE");
 
         try {
             cachelock.lock();

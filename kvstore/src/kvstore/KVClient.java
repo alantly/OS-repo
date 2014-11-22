@@ -86,6 +86,7 @@ public class KVClient implements KeyValueInterface {
         try {
             nSocket = connectHost();
             msg = new KVMessage(KVConstants.PUT_REQ);
+            msg.setKey(key);
             msg.setValue(value);
             msg.sendMessage(nSocket);
             response = new KVMessage(nSocket);
@@ -123,6 +124,7 @@ public class KVClient implements KeyValueInterface {
         try {
             nSocket = connectHost();
             msg = new KVMessage(KVConstants.GET_REQ);
+            msg.setKey(key);
             msg.sendMessage(nSocket);
             response = new KVMessage(nSocket);
             closeHost(nSocket);
@@ -130,7 +132,7 @@ public class KVClient implements KeyValueInterface {
         catch (KVException kve) {
             throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
         }
-        
+
         if (response.getValue() == null)
             throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
 
@@ -161,6 +163,7 @@ public class KVClient implements KeyValueInterface {
         try {
             nSocket = connectHost();
             msg = new KVMessage(KVConstants.DEL_REQ);
+            msg.setKey(key);
             msg.sendMessage(nSocket);
             response = new KVMessage(nSocket);
             closeHost(nSocket);

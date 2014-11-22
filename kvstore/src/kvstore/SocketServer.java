@@ -82,8 +82,11 @@ public class SocketServer {
      // implement me
         this.server.setSoTimeout(TIMEOUT);
         while (stopped != true) {
-           Socket s = this.server.accept();
-           this.handler.handle(s);
+            try {
+                Socket s = this.server.accept();
+                this.handler.handle(s);
+            }
+            catch (SocketTimeoutException s) {}
         }
     }
 

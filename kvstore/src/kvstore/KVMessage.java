@@ -135,8 +135,9 @@ public class KVMessage implements Serializable {
                 throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
            }
         } else if (t.equals(KVConstants.RESP)) {
-            if (xmlStore.getMessage() == null) {
-                throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+            if (xmlStore.getMessage() == null)
+                if (xmlStore.getKey() == null || xmlStore.getValue() == null) {
+                    throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
             }
         } else {
             throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
