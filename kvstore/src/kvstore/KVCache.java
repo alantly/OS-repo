@@ -191,12 +191,19 @@ public class KVCache implements KeyValueInterface {
         ObjectFactory factory = new ObjectFactory();
         KVCacheType xmlCache = factory.createKVCacheType();
         // implement me
-
-        // ArrayList<KVSetType> sets = (ArrayList<KVSetType>) xmlCache.getSet();
-        // sets = this.cacheSetWrapper.clone();
-
-        //throw new JAXBException(KVConstants.ERROR_INVALID_FORMAT);
-
+        ArrayList<KVSetType> xmlSets = (ArrayList<KVSetType>) xmlCache.getSet();
+        for (KVSetType set : this.cacheSetWrapper.getSet()) {
+            KVSetType xmlSet = factory.createKVSetType();
+            xmlSet.setId(set.getId());
+            for (KVCacheEntry e : set.getCacheEntry()) {
+                KVCacheEntry cacheEntry = factory.createKVCacheEntry();
+                cacheEntry.setKey(e.getKey());
+                cacheEntry.setValue(e.getValue());
+                cacheEntry.setIsReferenced(e.getIsReferenced());
+                xmlSet.getCacheEntry().add(cacheEntry);
+            }
+            xmlCache.getSet().add(xmlSet);
+        }
         return factory.createKVCache(xmlCache);
     }
 
@@ -209,6 +216,7 @@ public class KVCache implements KeyValueInterface {
         try {
             marshalTo(os);
         } catch (JAXBException e) {
+            return KVConstants.ERROR_PARSER;
             //e.printStackTrace();
         }
         return os.toString();

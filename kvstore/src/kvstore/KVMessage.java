@@ -139,9 +139,11 @@ public class KVMessage implements Serializable {
                 throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
             }
         } else {
-            throw new JAXBException(KVConstants.ERROR_INVALID_FORMAT);
+            throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
         }
+        
         return factory.createKVMessage(xmlStore);
+
     }
 
     /**

@@ -160,6 +160,7 @@ public class KVStore implements KeyValueInterface {
         resetStore();
         // implement me
         File f = new File(fileName);
+        this.resetStore();
         try {
             KVStoreType kvst = unmarshal(f);
             List<KVPairType> kv_list = kvst.getKVPair();
