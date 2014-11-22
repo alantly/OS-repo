@@ -88,9 +88,8 @@ public class SocketServer {
                 this.handler.handle(s);
             }
             catch (SocketTimeoutException ste) {}
-            if (stopped == true)
-                this.server.close();
         }
+        this.server.close();
     }
 
     /**
