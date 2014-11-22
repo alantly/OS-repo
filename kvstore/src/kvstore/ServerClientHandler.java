@@ -71,9 +71,9 @@ public class ServerClientHandler implements NetworkHandler {
         // implement me
         @Override
         public void run() {
+            KVMessage response_kvm = new KVMessage(RESP, SUCCESS);
             try {
                 KVMessage kvm = new KVMessage(client);
-                KVMessage response_kvm = new KVMessage(RESP, SUCCESS);
                 if (kvm.getMsgType() == DEL_REQ) {
                     kvServer.del(kvm.getKey());
                 } else if (kvm.getMsgType() == GET_REQ) {
@@ -86,8 +86,11 @@ public class ServerClientHandler implements NetworkHandler {
                 }
                 response_kvm.sendMessage(client);
             } catch (KVException kve) {
-                // need to send error KVMessage?
-            }
+                response_kvm = kve.getKVMessage();
+                try {
+                    response_kvm.sendMessage(client);
+                } catch (KVException e) {}
+            }        
         }
     }
 

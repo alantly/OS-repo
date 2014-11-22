@@ -92,7 +92,6 @@ public class KVServer implements KeyValueInterface {
             throw kve;
         }
         finally {
-
             cachelock.unlock();
         }
 

@@ -19,6 +19,7 @@ public class ThreadPool {
      * @param size number of threads in the thread pool
      */
     public ThreadPool(int size) {
+        // implement me
         job_list = new LinkedList<Runnable>();
         lock = new ReentrantLock();
         hasElements = lock.newCondition();
@@ -27,8 +28,7 @@ public class ThreadPool {
         for (int i = 0; i < size; i++) {
             threads[i] = new WorkerThread(this);
             threads[i].start();
-        }
-        // implement me
+        }    
     }
 
     /**
@@ -86,15 +86,13 @@ public class ThreadPool {
          */
         @Override
         public void run() {
+            // implement me
            while(true) {
                 try {
                     Runnable job = threadPool.getJob();
                     job.run();
-                } catch (InterruptedException ite) {
-
-                }
+                } catch (InterruptedException ite) {}
            }
-            // implement me
         }
     }
 }
