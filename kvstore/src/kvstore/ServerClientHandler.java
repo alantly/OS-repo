@@ -74,14 +74,14 @@ public class ServerClientHandler implements NetworkHandler {
             KVMessage response_kvm = new KVMessage(RESP, SUCCESS);
             try {
                 KVMessage kvm = new KVMessage(client);
-                if (kvm.getMsgType() == DEL_REQ) {
+                if (kvm.getMsgType().equals(DEL_REQ)) {
                     kvServer.del(kvm.getKey());
-                } else if (kvm.getMsgType() == GET_REQ) {
+                } else if (kvm.getMsgType().equals(GET_REQ)) {
                     String value = kvServer.get(kvm.getKey());
                     response_kvm.setMessage(null);
                     response_kvm.setKey(kvm.getKey());
                     response_kvm.setValue(value);
-                } else if (kvm.getMsgType() == PUT_REQ) {
+                } else if (kvm.getMsgType().equals(PUT_REQ)) {
                     kvServer.put(kvm.getKey(), kvm.getValue());
                 }
                 response_kvm.sendMessage(client);
