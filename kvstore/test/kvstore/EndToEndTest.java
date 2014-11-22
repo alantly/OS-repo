@@ -33,4 +33,20 @@ public class EndToEndTest extends EndToEndTemplate {
 	    }
     }
 
+    @Test(timeout = kTimeoutDefault)
+    @Category(AG_PROJ3_CODE.class)
+    @AGTestDetails(points = 1, desc = "Testing delete after combining all the pieces")
+    public void simpleDel() {
+    	try {
+    		client.put("del", "menow");
+    		try { Thread.sleep(100); } catch (InterruptedException ie) {  }
+    		client.del("del");
+    		try { Thread.sleep(100); } catch (InterruptedException ie) {  }
+    		client.get("del");
+    	} catch (KVException e) {
+    		assertEquals(e.getMessage(), KVConstants.ERROR_NO_SUCH_KEY);
+    	}
+
+    }
+
 }
