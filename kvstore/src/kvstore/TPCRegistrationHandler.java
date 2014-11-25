@@ -44,7 +44,42 @@ public class TPCRegistrationHandler implements NetworkHandler {
     @Override
     public void handle(Socket slave) {
         // implement me
+        TPCRegistrationHandlerRunner job = new TPCRegistrationHandlerRunner(client, kvServer);
+        try {
+            threadPool.addJob(job);
+        }
+        catch (InterruptedException e) {
+            // ignore any InterruptedExceptions like suggested above
+        }
     }
     
-    // implement me
+
+    public class TPCRegistrationHandlerRunner implements Runnable {
+        private Socket client;
+        private TPCMaster master;
+
+        public TPCRegistrationHandlerRunner(Socket client, TPCMaster master) {
+            this.client = client;
+            this.master = master;
+        }
+        // implement me
+        @Override
+        public void run() {
+            //KVMessage ack_kvm = new KVMessage(ACK);
+            try {
+                KVMessage kvm = new KVMessage(client);
+                if (kvm.getMsgType().equals(REGISTER)) {
+                    master.registerSlave(new TPCSlaveInfo(kvm.getMessage));
+                    //response_kvm.sendMessage(client); //do we need to send an ack??
+                }
+            } catch (KVException kve) {
+                // Do nothing
+                //response_kvm = kve.getKVMessage();
+                //try {
+                //    response_kvm.sendMessage(client);
+                //} catch (KVException e) {}
+            }        
+        }
+
+    }
 }

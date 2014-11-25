@@ -81,6 +81,7 @@ public class KVMessage implements Serializable {
     public KVMessage(Socket sock, int timeout) throws KVException {
         // implement me
         try {
+            sock.setSoTimeout(timeout);
             InputStream is = sock.getInputStream();
             KVMessageType kvmt = unmarshal(is);
             this.msgType = kvmt.getType();
@@ -139,6 +140,11 @@ public class KVMessage implements Serializable {
                 if (xmlStore.getKey() == null || xmlStore.getValue() == null) {
                     throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
             }
+        } else if (t.equals(KVConstants.READY) || t.equals(KVConstants.COMMIT) || t.equals(KVConstants.ACK) || t.equals(KVConstants.ABORT)) {
+            //Nothing to check??
+        } else if (t.equals(KVConstants.REGISTER)) {
+            if (xmlStore.getMessage() == null)
+                throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
         } else {
             throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
         }
