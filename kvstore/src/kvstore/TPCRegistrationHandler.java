@@ -69,7 +69,7 @@ public class TPCRegistrationHandler implements NetworkHandler {
             try {
                 KVMessage kvm = new KVMessage(client);
                 if (kvm.getMsgType().equals(REGISTER)) {
-                    master.registerSlave(new TPCSlaveInfo(kvm.getMessage));
+                    master.registerSlave(new TPCSlaveInfo(kvm.getMessage()));
                     //response_kvm.sendMessage(client); //do we need to send an ack??
                 }
             } catch (KVException kve) {
