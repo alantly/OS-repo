@@ -44,7 +44,7 @@ public class TPCRegistrationHandler implements NetworkHandler {
     @Override
     public void handle(Socket slave) {
         // implement me
-        TPCRegistrationHandlerRunner job = new TPCRegistrationHandlerRunner(client, kvServer);
+        TPCRegistrationHandlerRunner job = new TPCRegistrationHandlerRunner(client, master);
         try {
             threadPool.addJob(job);
         }
