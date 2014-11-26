@@ -44,9 +44,9 @@ public class TPCRegistrationHandler implements NetworkHandler {
     @Override
     public void handle(Socket slave) {
         // implement me
-        TPCRegistrationHandlerRunner job = new TPCRegistrationHandlerRunner(client, master);
+        TPCRegistrationHandlerRunner job = new TPCRegistrationHandlerRunner(slave, master);
         try {
-            threadPool.addJob(job);
+            threadpool.addJob(job);
         }
         catch (InterruptedException e) {
             // ignore any InterruptedExceptions like suggested above
@@ -70,7 +70,8 @@ public class TPCRegistrationHandler implements NetworkHandler {
                 KVMessage kvm = new KVMessage(client);
                 if (kvm.getMsgType().equals(REGISTER)) {
                     master.registerSlave(new TPCSlaveInfo(kvm.getMessage()));
-                    //response_kvm.sendMessage(client); //do we need to send an ack??
+                    // compare to new slave count
+                    //response_kvm.sendMessage(client);
                 }
             } catch (KVException kve) {
                 // Do nothing

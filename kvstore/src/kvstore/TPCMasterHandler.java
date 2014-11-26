@@ -58,8 +58,22 @@ public class TPCMasterHandler implements NetworkHandler {
     public void registerWithMaster(String masterHostname, SocketServer server)
             throws KVException {
         // implement me
-    }
+        try {
+            String msg = Long.toString(slaveID) + "@" + server.getHostname() + ":" + Integer.toString(server.getPort());
+            KVMessage kvm = new KVMessage(REGISTER, msg);
+            Socket s = new Socket(masterHostname, 9090);
+            kvm.sendMessage(s);
+            KVMessage response = new KVMessage(s);
+            if (!response.getMsgType().equals(RESP) || !response.getMessage().equals(SUCCESS)) {
+                throws new KVException(ERROR_INVALID_FORMAT);
+            }
+        } catch (UnknownHostException uhe) {
+            throws new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
 
+        } catch (IOException ioe) {
+            throws new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+        }
+    }
     /**
      * Creates a job to service the request on a socket and enqueues that job
      * in the thread pool. Ignore any InterruptedExceptions.

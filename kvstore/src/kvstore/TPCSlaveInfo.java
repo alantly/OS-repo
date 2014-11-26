@@ -28,25 +28,21 @@ public class TPCSlaveInfo {
         Pattern pPort = Pattern.compile(":[0-9]+"); //number mix.
 
         try {
-            m = pSlaveID.matcher(info);
+            Matcher m = pSlaveID.matcher(info);
             m.find();
-            this.slaveID = Long.valueOf(m.group().substring(m.start(),m.end()-1)).longValue();
+            this.slaveID = Long.valueOf(info.substring(m.start(),m.end()-1)).longValue();
 
             m = pHostName.matcher(info);
             m.find();
-            this.hostname = m.group().substring(m.start()-1,m.end()-1);
+            this.hostname = info.substring(m.start()+1,m.end()-1);
 
             m = pPort.matcher(info);
             m.find();
-            this.port = Integer.valueOf(m.group().substring(m.start()-1)).intValue();
-        catch (IllegalStateException e) {
+            this.port = Integer.valueOf(info.substring(m.start()+1)).intValue();
+        } catch (IllegalStateException e) {
             //no match found
             throw new KVException(KVConstants.ERROR_PARSER);
         }
-    }
-
-    private getString(Pattern p, String info) {
-
     }
 
     public long getSlaveID() {
@@ -70,6 +66,10 @@ public class TPCSlaveInfo {
      */
     public Socket connectHost(int timeout) throws KVException {
         // implement me
+        Socket nSocket = null;
+        try {
+            nSocket = new Socket(hostname, port);
+        }
         return null;
     }
 
@@ -83,3 +83,31 @@ public class TPCSlaveInfo {
         // implement me
     }
 }
+
+
+
+
+    public Socket connectHost() throws KVException {
+        Socket nSocket = null;
+        try {
+            nSocket = new Socket(this.server, this.port);
+        }
+        catch (IOException ioe) {
+            throw new KVException(KVConstants.ERROR_COULD_NOT_CREATE_SOCKET);
+        }
+        return nSocket;
+    }
+
+    /**
+     * Closes a socket.
+     * Best effort, ignores error since the response has already been received.
+     *
+     * @param  sock Socket to be closed
+     */
+    public void closeHost(Socket sock) {
+        // implement me
+        try {
+            sock.close();
+        }
+        catch (IOException ioex) {}
+    }

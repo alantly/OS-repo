@@ -10,6 +10,8 @@ public class TPCMaster {
 
     public int numSlaves;
     public KVCache masterCache;
+    private ArrayList<TPCSlaveInfo> slaves;
+    private TPCSlaveInfo deadSlave;
 
     public static final int TIMEOUT = 3000;
 
@@ -23,6 +25,8 @@ public class TPCMaster {
         this.numSlaves = numSlaves;
         this.masterCache = cache;
         // implement me
+        this.deadSlave = null;
+        this.slaves = new ArrayList<TPCSlaveInfo>();
     }
 
     /**
@@ -33,7 +37,35 @@ public class TPCMaster {
      * @param slave the slaveInfo to be registered
      */
     public void registerSlave(TPCSlaveInfo slave) {
+        // check if throw error if curnumslaves == numSlaves
+        // set flag to true
         // implement me
+        if (deadSlave != null && slave.getID() == deadSlave.getID()) {
+            deadSlave = null;
+        } else if (slaves.size() == numSlaves) {
+            // doing nothing
+        } else {
+            long slave_id = slave.getID();
+
+            if (slaves.size() == 0) {
+                slaves.add(slave);
+            } else {
+                if (isLessThanUnsigned(slave_id,slaves.get(0).getID())) {
+                    slaves.add(0, slave);
+                } else if (!isLessThanEqualUnsigned(slave_id, slaves.get(slaves.size() - 1))) {
+                    slaves.add(slave);
+                } else {
+                    for (int i = 0; i < slaves.size() - 1; i ++) {
+                        long previous_id = slaves.get(i).getID();
+                        long next_id = slaves.get(i + 1).getID();
+                        if (isLessThanUnsigned(previous_id, slave_id) && isLessThanUnsigned(slave_id, next_id)) {
+                            slaves.add(i+1, slave);
+                        }
+                    }
+                }
+            }
+        }
+        return;
     }
 
     /**
@@ -84,7 +116,20 @@ public class TPCMaster {
      */
     public TPCSlaveInfo findFirstReplica(String key) {
         // implement me
-        return null;
+        long hashed_key = hashTo64bit(key);
+        if (isLessThanUnsigned(hashed_key,slaves.get(0).getID())) {
+            return slaves.get(0);
+        } else if (!isLessThanEqualUnsigned(hashed_key, slaves.get(slaves.size() - 1))) {
+            retrun slaves.get(0);
+        } else {
+            for (int i = 0; i < slaves.size() - 1; i ++) {
+                long previous_id = slaves.get(i).getID();
+                long next_id = slaves.get(i + 1).getID();
+                if (isLessThanUnsigned(previous_id, slave_id) && isLessThanUnsigned(slave_id, next_id)) {
+                    return slaves.get(i+1);
+                }
+            }
+        }
     }
 
     /**
@@ -94,16 +139,30 @@ public class TPCMaster {
      * @return SlaveInfo of successor replica
      */
     public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica) {
-        // implement me
-        return null;
+        long hashed_key = hashTo64bit(key);
+        if (isLessThanUnsigned(hashed_key,slaves.get(0).getID())) {
+            return slaves.get(1);
+        } else if (!isLessThanEqualUnsigned(hashed_key, slaves.get(slaves.size() - 1))) {
+            retrun slaves.get(1);
+        } else {
+            for (int i = 0; i < slaves.size() - 1; i ++) {
+                long previous_id = slaves.get(i).getID();
+                long next_id = slaves.get(i + 1).getID();
+                if (isLessThanUnsigned(previous_id, slave_id) && isLessThanUnsigned(slave_id, next_id)) {
+                    return slaves.get((i+2) % numSlaves);
+                }
+            }
+        }
     }
 
     /**
      * @return The number of slaves currently registered.
      */
     public int getNumRegisteredSlaves() {
-        // implement me
-        return -1;
+        if (deadSlave != null) {
+            return slaves.size() - 1;
+        }
+        return slaves.size();
     }
 
     /**
