@@ -67,7 +67,7 @@ public class TPCMasterHandler implements NetworkHandler {
             Socket s = new Socket(masterHostname, 9090);
             kvm.sendMessage(s);
             KVMessage response = new KVMessage(s);
-            if (!response.getMsgType().equals(RESP) || !response.getMessage().equals(SUCCESS)) {
+            if (!response.getMsgType().equals(RESP) || !response.getMessage().equals("Successfully registered "+ msg)) {
                 throw new KVException(ERROR_INVALID_FORMAT);
             }
         } catch (UnknownHostException uhe) {

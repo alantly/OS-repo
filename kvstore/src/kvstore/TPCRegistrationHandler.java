@@ -65,20 +65,23 @@ public class TPCRegistrationHandler implements NetworkHandler {
         // implement me
         @Override
         public void run() {
-            //KVMessage ack_kvm = new KVMessage(ACK);
+            KVMessage response_kvm = new KVMessage(RESP);
             try {
                 KVMessage kvm = new KVMessage(client);
                 if (kvm.getMsgType().equals(REGISTER)) {
-                    master.registerSlave(new TPCSlaveInfo(kvm.getMessage()));
-                    // compare to new slave count
-                    //response_kvm.sendMessage(client);
+                    String msg = kvm.getMessage();
+                    TPCSlaveInfo slaveInfo = new TPCSlaveInfo(msg);
+                    master.registerSlave(slaveInfo);
+                    kvm.setMessage("Successfully registered "+ msg);
+                    if (master.getSlave(slaveInfo.getSlaveID()) == null)
+                        kvm.setMessage(null);
+                    response_kvm.sendMessage(client);
                 }
             } catch (KVException kve) {
-                // Do nothing
-                //response_kvm = kve.getKVMessage();
-                //try {
-                //    response_kvm.sendMessage(client);
-                //} catch (KVException e) {}
+                response_kvm = kve.getKVMessage();
+                try {
+                    response_kvm.sendMessage(client);
+                } catch (KVException e) {}
             }        
         }
 
