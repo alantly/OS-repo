@@ -3,6 +3,9 @@ package kvstore;
 import static kvstore.KVConstants.*;
 
 import java.net.Socket;
+import java.io.IOException;
+import java.net.UnknownHostException;
+
 /**
  * Implements NetworkHandler to handle 2PC operation requests from the Master/
  * Coordinator Server
@@ -65,13 +68,13 @@ public class TPCMasterHandler implements NetworkHandler {
             kvm.sendMessage(s);
             KVMessage response = new KVMessage(s);
             if (!response.getMsgType().equals(RESP) || !response.getMessage().equals(SUCCESS)) {
-                throws new KVException(ERROR_INVALID_FORMAT);
+                throw new KVException(ERROR_INVALID_FORMAT);
             }
         } catch (UnknownHostException uhe) {
-            throws new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+            throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
 
         } catch (IOException ioe) {
-            throws new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+            throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
         }
     }
     /**

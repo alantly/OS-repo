@@ -40,24 +40,24 @@ public class TPCMaster {
         // check if throw error if curnumslaves == numSlaves
         // set flag to true
         // implement me
-        if (deadSlave != null && slave.getID() == deadSlave.getID()) {
+        if (deadSlave != null && slave.getSlaveID() == deadSlave.getSlaveID()) {
             deadSlave = null;
         } else if (slaves.size() == numSlaves) {
             // doing nothing
         } else {
-            long slave_id = slave.getID();
+            long slave_id = slave.getSlaveID();
 
             if (slaves.size() == 0) {
                 slaves.add(slave);
             } else {
-                if (isLessThanUnsigned(slave_id,slaves.get(0).getID())) {
+                if (isLessThanUnsigned(slave_id,slaves.get(0).getSlaveID())) {
                     slaves.add(0, slave);
-                } else if (!isLessThanEqualUnsigned(slave_id, slaves.get(slaves.size() - 1))) {
+                } else if (!isLessThanEqualUnsigned(slave_id, slaves.get(slaves.size() - 1).getSlaveID())) {
                     slaves.add(slave);
                 } else {
                     for (int i = 0; i < slaves.size() - 1; i ++) {
-                        long previous_id = slaves.get(i).getID();
-                        long next_id = slaves.get(i + 1).getID();
+                        long previous_id = slaves.get(i).getSlaveID();
+                        long next_id = slaves.get(i + 1).getSlaveID();
                         if (isLessThanUnsigned(previous_id, slave_id) && isLessThanUnsigned(slave_id, next_id)) {
                             slaves.add(i+1, slave);
                         }
@@ -117,19 +117,20 @@ public class TPCMaster {
     public TPCSlaveInfo findFirstReplica(String key) {
         // implement me
         long hashed_key = hashTo64bit(key);
-        if (isLessThanUnsigned(hashed_key,slaves.get(0).getID())) {
+        if (isLessThanUnsigned(hashed_key,slaves.get(0).getSlaveID())) {
             return slaves.get(0);
-        } else if (!isLessThanEqualUnsigned(hashed_key, slaves.get(slaves.size() - 1))) {
-            retrun slaves.get(0);
+        } else if (!isLessThanEqualUnsigned(hashed_key, slaves.get(slaves.size() - 1).getSlaveID())) {
+            return slaves.get(0);
         } else {
             for (int i = 0; i < slaves.size() - 1; i ++) {
-                long previous_id = slaves.get(i).getID();
-                long next_id = slaves.get(i + 1).getID();
-                if (isLessThanUnsigned(previous_id, slave_id) && isLessThanUnsigned(slave_id, next_id)) {
+                long previous_id = slaves.get(i).getSlaveID();
+                long next_id = slaves.get(i + 1).getSlaveID();
+                if (isLessThanUnsigned(previous_id, hashed_key) && isLessThanUnsigned(hashed_key, next_id)) {
                     return slaves.get(i+1);
                 }
             }
         }
+        return null;
     }
 
     /**
@@ -139,20 +140,21 @@ public class TPCMaster {
      * @return SlaveInfo of successor replica
      */
     public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica) {
-        long hashed_key = hashTo64bit(key);
-        if (isLessThanUnsigned(hashed_key,slaves.get(0).getID())) {
+        long hashed_key = firstReplica.getSlaveID();
+        if (isLessThanUnsigned(hashed_key,slaves.get(0).getSlaveID())) {
             return slaves.get(1);
-        } else if (!isLessThanEqualUnsigned(hashed_key, slaves.get(slaves.size() - 1))) {
-            retrun slaves.get(1);
+        } else if (!isLessThanEqualUnsigned(hashed_key, slaves.get(slaves.size() - 1).getSlaveID())) {
+            return slaves.get(1);
         } else {
             for (int i = 0; i < slaves.size() - 1; i ++) {
-                long previous_id = slaves.get(i).getID();
-                long next_id = slaves.get(i + 1).getID();
-                if (isLessThanUnsigned(previous_id, slave_id) && isLessThanUnsigned(slave_id, next_id)) {
+                long previous_id = slaves.get(i).getSlaveID();
+                long next_id = slaves.get(i + 1).getSlaveID();
+                if (isLessThanEqualUnsigned(previous_id, hashed_key) && isLessThanEqualUnsigned(hashed_key, next_id)) {
                     return slaves.get((i+2) % numSlaves);
                 }
             }
         }
+        return null;
     }
 
     /**

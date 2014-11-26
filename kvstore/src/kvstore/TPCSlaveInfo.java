@@ -66,11 +66,13 @@ public class TPCSlaveInfo {
      */
     public Socket connectHost(int timeout) throws KVException {
         // implement me
-        Socket nSocket = null;
         try {
-            nSocket = new Socket(hostname, port);
+            Socket nSocket = new Socket(hostname, port);
+            // nSocket.
+            return nSocket;
+        } catch (IOException ioe) {
+            throw new KVException(ERROR_COULD_NOT_CONNECT);
         }
-        return null;
     }
 
     /**
@@ -83,31 +85,3 @@ public class TPCSlaveInfo {
         // implement me
     }
 }
-
-
-
-
-    public Socket connectHost() throws KVException {
-        Socket nSocket = null;
-        try {
-            nSocket = new Socket(this.server, this.port);
-        }
-        catch (IOException ioe) {
-            throw new KVException(KVConstants.ERROR_COULD_NOT_CREATE_SOCKET);
-        }
-        return nSocket;
-    }
-
-    /**
-     * Closes a socket.
-     * Best effort, ignores error since the response has already been received.
-     *
-     * @param  sock Socket to be closed
-     */
-    public void closeHost(Socket sock) {
-        // implement me
-        try {
-            sock.close();
-        }
-        catch (IOException ioex) {}
-    }

@@ -67,8 +67,8 @@ public class TPCClientHandler implements NetworkHandler {
             KVMessage response = new KVMessage(RESP,SUCCESS);
             try {
                 KVMessage kvm = new KVMessage(client);
-                if (kvm.getMsgType.equals(GET_REQ)) {
-                    String value = master.handleGET(kvm);
+                if (kvm.getMsgType().equals(GET_REQ)) {
+                    String value = master.handleGet(kvm);
                     response.setValue(value);
                     response.setKey(kvm.getKey());
                     response.setMessage(null);
@@ -76,9 +76,9 @@ public class TPCClientHandler implements NetworkHandler {
                 }
 
             } catch (KVException kve) {
-                response_kvm = kve.getKVMessage();
+                response = kve.getKVMessage();
                 try {
-                    response_kvm.sendMessage(client);
+                    response.sendMessage(client);
                 } catch (KVException e) {}
             }        
         }
