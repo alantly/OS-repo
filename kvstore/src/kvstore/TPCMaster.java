@@ -251,8 +251,8 @@ public class TPCMaster {
                 }
                 finally {
                     cacheLock.unlock();
-                    return value;
                 }
+                return value;
             }
             else {
                 // Try getting from second slave
@@ -280,8 +280,8 @@ public class TPCMaster {
                     }
                     finally {
                         cacheLock.unlock();
-                        return value;
-                    }   
+                    }  
+                    return value; 
                 }
             }
         }
