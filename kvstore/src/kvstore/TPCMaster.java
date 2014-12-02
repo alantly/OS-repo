@@ -208,7 +208,85 @@ public class TPCMaster {
      */
     public String handleGet(KVMessage msg) throws KVException {
         // implement me
+
+        String msgkey = msg.getKey();
+        String msgtype = msg.getMsgType();
+        String value = null;
+        TPCSlaveInfo slave1 = null;
+        
+        if (!(msgtype.equals(KVConstants.GET_REQ))) {
+            throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+        }
+        
+        Lock cacheLock = this.masterCache.getLock(msgkey);
+        // Try getting from the masterCache
+        cacheLock.lock();
+        value = this.masterCache.get(msgkey);
+        cacheLock.unlock();
+
+        Socket nSocket = null;
+        KVMessage response = null;
+
+        if (value == null) {
+            // Try getting from first slave
+            try {
+                slave1 = this.findFirstReplica(msgkey);
+                nSocket = slave1.connectHost(TIMEOUT);
+                msg.sendMessage(nSocket);
+                response = new KVMessage(nSocket);
+                value = response.getValue();
+                slave1.closeHost(nSocket);
+            }
+            catch (KVException kve) {
+                throw kve;
+            }
+            if (value != null) {
+                try {
+                    // Update MasterCache
+                    cacheLock.lock();
+                    this.masterCache.put(msgkey, value);
+                }
+                catch (KVException kve) {
+                    throw kve;
+                }
+                finally {
+                    cacheLock.unlock();
+                    return value;
+                }
+            }
+            else {
+                // Try getting from second slave
+                try {
+                    TPCSlaveInfo slave2 = this.findSuccessor(slave1);
+                    nSocket = slave2.connectHost(TIMEOUT);
+                    msg.sendMessage(nSocket);
+                    response = new KVMessage(nSocket);
+                    value = response.getValue();
+                }
+                catch (KVException kev) {
+                    throw kve;
+                }
+                if (value == null) {
+                    throw new KVException(KVConstants.ERROR_INVALID_KEY);
+                }
+                else {
+                    try {
+                        // Update MasterCache
+                        cacheLock.lock();
+                        this.masterCache.put(msgkey, value);
+                    }
+                    catch (KVException kve) {
+                        throw kve;
+                    }
+                    finally {
+                        cacheLock.unlock();
+                        return value;
+                    }   
+                }
+            }
+        }
+        else
+            return value;
         return null;
     }
-
 }

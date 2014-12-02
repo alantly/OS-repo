@@ -68,7 +68,7 @@ public class TPCSlaveInfo {
         // implement me
         try {
             Socket nSocket = new Socket(hostname, port);
-            // nSocket.
+            nSocket.setSoTimeout(timeout);
             return nSocket;
         } catch (IOException ioe) {
             throw new KVException(ERROR_COULD_NOT_CONNECT);
@@ -83,5 +83,9 @@ public class TPCSlaveInfo {
      */
     public void closeHost(Socket sock) {
         // implement me
+        try {
+            sock.close();
+        }
+        catch (IOException ioex) {}
     }
 }
