@@ -23,11 +23,12 @@ public class TPCSlaveInfo {
      */
     public TPCSlaveInfo(String info) throws KVException {
         // implement me
-        Pattern pSlaveID = Pattern.compile("[0-9]+@"); //number mix.
-        Pattern pHostName = Pattern.compile("@[0-9a-zA-Z]+:"); //alpha/number mix.
+        Pattern pSlaveID = Pattern.compile("-?[0-9]+@"); //number mix.
+        Pattern pHostName = Pattern.compile("@\\S+:"); //alpha/number mix.
         Pattern pPort = Pattern.compile(":[0-9]+"); //number mix.
 
         try {
+
             Matcher m = pSlaveID.matcher(info);
             m.find();
             this.slaveID = Long.valueOf(info.substring(m.start(),m.end()-1)).longValue();
@@ -39,6 +40,7 @@ public class TPCSlaveInfo {
             m = pPort.matcher(info);
             m.find();
             this.port = Integer.valueOf(info.substring(m.start()+1)).intValue();
+
         } catch (IllegalStateException e) {
             //no match found
             throw new KVException(KVConstants.ERROR_PARSER);

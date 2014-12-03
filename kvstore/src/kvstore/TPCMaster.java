@@ -141,16 +141,14 @@ public class TPCMaster {
      */
     public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica) {
         long hashed_key = firstReplica.getSlaveID();
-        if (isLessThanUnsigned(hashed_key,slaves.get(0).getSlaveID())) {
-            return slaves.get(1);
-        } else if (!isLessThanEqualUnsigned(hashed_key, slaves.get(slaves.size() - 1).getSlaveID())) {
-            return slaves.get(1);
+        if (!isLessThanUnsigned(hashed_key, slaves.get(slaves.size() - 1).getSlaveID())) {
+            return slaves.get(0);
         } else {
             for (int i = 0; i < slaves.size() - 1; i ++) {
                 long previous_id = slaves.get(i).getSlaveID();
                 long next_id = slaves.get(i + 1).getSlaveID();
-                if (isLessThanEqualUnsigned(previous_id, hashed_key) && isLessThanEqualUnsigned(hashed_key, next_id)) {
-                    return slaves.get((i+2) % numSlaves);
+                if (isLessThanEqualUnsigned(previous_id, hashed_key) && isLessThanUnsigned(hashed_key, next_id)) {
+                    return slaves.get((i+1)%numSlaves);
                 }
             }
         }
@@ -214,10 +212,12 @@ public class TPCMaster {
         String value = null;
         TPCSlaveInfo slave1 = null;
         
+        /*
         if (!(msgtype.equals(KVConstants.GET_REQ))) {
             throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
         }
-        
+        */
+
         Lock cacheLock = this.masterCache.getLock(msgkey);
         // Try getting from the masterCache
         cacheLock.lock();
@@ -227,49 +227,37 @@ public class TPCMaster {
         Socket nSocket = null;
         KVMessage response = null;
 
+        if (value != null)
+            return value;
+        // Try getting from first slave
+        slave1 = this.findFirstReplica(msgkey);
+        nSocket = slave1.connectHost(TIMEOUT);
+        msg.sendMessage(nSocket);
+        response = new KVMessage(nSocket, TIMEOUT);
+        value = response.getValue();
+        slave1.closeHost(nSocket);
+
         if (value == null) {
-            // Try getting from first slave
+            // Try getting from second slave
+            TPCSlaveInfo slave2 = this.findSuccessor(slave1);
+            nSocket = slave2.connectHost(TIMEOUT);
+            msg.sendMessage(nSocket);
+            response = new KVMessage(nSocket, TIMEOUT);
+            value = response.getValue();
+        }
+        if (value == null) {
+            throw new KVException(KVConstants.ERROR_INVALID_KEY);
+        }
+        else {
+            // Update MasterCache
             try {
-                slave1 = this.findFirstReplica(msgkey);
-                nSocket = slave1.connectHost(TIMEOUT);
-                msg.sendMessage(nSocket);
-                response = new KVMessage(nSocket);
-                value = response.getValue();
-                slave1.closeHost(nSocket);
-            }
-            catch (KVException kve) {
-                throw kve;
-            }
-            if (value != null) {
-                cacheLock.lock();
-                this.masterCache.put(msgkey, value);
+            cacheLock.lock();
+            this.masterCache.put(msgkey, value);
+            } finally {
                 cacheLock.unlock();
-                return value;
-            }
-            else {
-                // Try getting from second slave
-                try {
-                    TPCSlaveInfo slave2 = this.findSuccessor(slave1);
-                    nSocket = slave2.connectHost(TIMEOUT);
-                    msg.sendMessage(nSocket);
-                    response = new KVMessage(nSocket);
-                    value = response.getValue();
-                }
-                catch (KVException kve) {
-                    throw kve;
-                }
-                if (value == null) {
-                    throw new KVException(KVConstants.ERROR_INVALID_KEY);
-                }
-                else {
-                    cacheLock.lock();
-                    this.masterCache.put(msgkey, value);
-                    cacheLock.unlock();
-                    return value; 
-                }
             }
         }
-        else
-            return value;
+        return value; 
+        
     }
 }
