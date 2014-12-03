@@ -241,17 +241,9 @@ public class TPCMaster {
                 throw kve;
             }
             if (value != null) {
-                try {
-                    // Update MasterCache
-                    cacheLock.lock();
-                    this.masterCache.put(msgkey, value);
-                }
-                catch (KVException kve) {
-                    throw kve;
-                }
-                finally {
-                    cacheLock.unlock();
-                }
+                cacheLock.lock();
+                this.masterCache.put(msgkey, value);
+                cacheLock.unlock();
                 return value;
             }
             else {
@@ -263,30 +255,21 @@ public class TPCMaster {
                     response = new KVMessage(nSocket);
                     value = response.getValue();
                 }
-                catch (KVException kev) {
+                catch (KVException kve) {
                     throw kve;
                 }
                 if (value == null) {
                     throw new KVException(KVConstants.ERROR_INVALID_KEY);
                 }
                 else {
-                    try {
-                        // Update MasterCache
-                        cacheLock.lock();
-                        this.masterCache.put(msgkey, value);
-                    }
-                    catch (KVException kve) {
-                        throw kve;
-                    }
-                    finally {
-                        cacheLock.unlock();
-                    }  
+                    cacheLock.lock();
+                    this.masterCache.put(msgkey, value);
+                    cacheLock.unlock();
                     return value; 
                 }
             }
         }
         else
             return value;
-        return null;
     }
 }
