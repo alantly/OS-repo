@@ -148,6 +148,61 @@ public class KVMessageTest {
     }
 
     @Test(timeout = kTimeoutQuick)
+    public void successfullyParsesRdyVote() throws KVException {
+        sock = Utils.setupReadFromFile("rdyvote.txt");
+        KVMessage kvm = new KVMessage(sock);
+        assertNotNull(kvm);
+        assertEquals(READY, kvm.getMsgType());
+        assertNull(kvm.getMessage());
+        assertNull(kvm.getValue());
+        assertNull(kvm.getKey());
+    }
+
+    @Test(timeout = kTimeoutQuick)
+    public void successfullyParsesAbrtVote() throws KVException {
+        sock = Utils.setupReadFromFile("abrtvote.txt");
+        KVMessage kvm = new KVMessage(sock);
+        assertNotNull(kvm);
+        assertEquals(ABORT, kvm.getMsgType());
+        assertNotNull(kvm.getMessage());
+        assertNull(kvm.getValue());
+        assertNull(kvm.getKey());
+    }
+
+    @Test(timeout = kTimeoutQuick)
+    public void successfullyParsesAbrtDecision() throws KVException {
+        sock = Utils.setupReadFromFile("abort.txt");
+        KVMessage kvm = new KVMessage(sock);
+        assertNotNull(kvm);
+        assertEquals(ABORT, kvm.getMsgType());
+        assertNull(kvm.getMessage());
+        assertNull(kvm.getValue());
+        assertNull(kvm.getKey());
+    }
+
+    @Test(timeout = kTimeoutQuick)
+    public void successfullyParsesCommitDecision() throws KVException {
+        sock = Utils.setupReadFromFile("commit.txt");
+        KVMessage kvm = new KVMessage(sock);
+        assertNotNull(kvm);
+        assertEquals(COMMIT, kvm.getMsgType());
+        assertNull(kvm.getMessage());
+        assertNull(kvm.getValue());
+        assertNull(kvm.getKey());
+    }
+
+    @Test(timeout = kTimeoutQuick)
+    public void successfullyParsesACK() throws KVException {
+        sock = Utils.setupReadFromFile("ack.txt");
+        KVMessage kvm = new KVMessage(sock);
+        assertNotNull(kvm);
+        assertEquals(ACK, kvm.getMsgType());
+        assertNull(kvm.getMessage());
+        assertNull(kvm.getValue());
+        assertNull(kvm.getKey());
+    }
+
+    @Test(timeout = kTimeoutQuick)
     @Category(AG_PROJ3_CODE.class)
     @AGTestDetails(points = 2,
         desc = "Non XML in socket results in ERROR_PARSER or ERROR_INVALID_FORMAT")
