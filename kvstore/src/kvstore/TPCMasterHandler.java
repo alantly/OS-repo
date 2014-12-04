@@ -85,6 +85,42 @@ public class TPCMasterHandler implements NetworkHandler {
      */
     @Override
     public void handle(Socket master) {
-        // implement me
+        TCPMasterHandlerRunner job = new TCPMasterHandlerRunner(master, this.kvServer);
+        try {
+            this.threadpool.addJob(job);
+        }
+        catch (InterruptedException e) {}
+    }
+
+    public class TCPMasterHandlerRunner implements Runnable {
+        private Socket master;
+        private KVServer kvServer;
+
+        public TCPMasterHandlerRunner(Socket master, KVServer kvServer) {
+            this.master = master;
+            this.kvServer = kvServer;
+        }
+
+        @Override
+        public void run() {
+            KVMessage response_kvm = new KVMessage(RESP, SUCCESS);
+            try {
+                KVMessage kvm = new KVMessage(master);
+                if (kvm.getMsgType().equals(GET_REQ)) {
+                    String value = kvServer.get(kvm.getKey());
+                    response_kvm.setMessage(null);
+                    response_kvm.setKey(kvm.getKey());
+                    response_kvm.setValue(value);
+                }
+                response_kvm.sendMessage(master);
+            }
+            catch (KVException kve) {
+                response_kvm = kve.getKVMessage();
+                try {
+                    response_kvm.sendMessage(master);
+                }
+                catch (KVException e) {}
+            }
+        }
     }
 }
