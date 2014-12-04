@@ -167,6 +167,4 @@ public class TPCMasterTest {
 	        fail("This shouldn't fail");
 	    }
 	}
-	
-
 }
