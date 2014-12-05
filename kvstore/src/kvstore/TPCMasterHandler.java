@@ -108,6 +108,7 @@ public class TPCMasterHandler implements NetworkHandler {
             KVMessage response_kvm = new KVMessage(RESP, SUCCESS);
             try {
                 KVMessage kvm = new KVMessage(master);
+                // add every msg to our log file
                 this.tpcLog.appendAndFlush(kvm);
                 if (kvm.getMsgType().equals(GET_REQ)) {
                     String value = kvServer.get(kvm.getKey());
