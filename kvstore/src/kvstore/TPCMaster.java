@@ -224,6 +224,7 @@ public class TPCMaster {
         String msgkey = msg.getKey();
         String msgtype = msg.getMsgType();
         String value = null;
+        String response_msg;
         TPCSlaveInfo slave1 = null;
         
         try {
@@ -248,10 +249,13 @@ public class TPCMaster {
         response = new KVMessage(nSocket, TIMEOUT);
         value = response.getValue();
         slave1.closeHost(nSocket);
+        response_msg = response.getMessage();
 
-        if (value == null) {
+        if (response_msg.equals(ERROR_NO_SUCH_KEY)) {
+            throw new KVException(response);
+        } else if (response_msg.equals(ERROR_COULD_NOT_CONNECT)) {
             //first replica is dead, mark as dead.
-
+            deadSlave = slave1; 
             // Try getting from second slave
             TPCSlaveInfo slave2 = this.findSuccessor(slave1);
             nSocket = slave2.connectHost(TIMEOUT);
@@ -259,11 +263,10 @@ public class TPCMaster {
             response = new KVMessage(nSocket, TIMEOUT);
             value = response.getValue();
         }
-        if (value == null) {
-            //second replica is dead, something wrong. Only one dead at a time
-            throw new KVException(KVConstants.ERROR_INVALID_KEY);
-        }
-        else {
+        
+        if (response_msg.equals(ERROR_NO_SUCH_KEY)) {
+            throw new KVException(response);
+        } else {
             // Update MasterCache
             try {
             cacheLock.lock();
