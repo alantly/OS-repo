@@ -67,7 +67,7 @@ public class TPCMasterHandler implements NetworkHandler {
             Socket s = new Socket(masterHostname, 9090);
             kvm.sendMessage(s);
             KVMessage response = new KVMessage(s);
-            if (!response.getMsgType().equals(RESP) || !response.getMessage().equals("Successfully registered "+ msg)) {
+            if (!response.getMsgType().equals(RESP) || response.getMessage().equals("Unsuccessful registration "+ msg)) {
                 throw new KVException(ERROR_INVALID_FORMAT);
             }
         } catch (UnknownHostException uhe) {
@@ -108,13 +108,17 @@ public class TPCMasterHandler implements NetworkHandler {
             KVMessage response_kvm = new KVMessage(RESP, SUCCESS);
             try {
                 KVMessage kvm = new KVMessage(master);
-                // add every msg to our log file
+                // add every msg to our log file  
                 this.tpcLog.appendAndFlush(kvm);
                 if (kvm.getMsgType().equals(GET_REQ)) {
                     String value = kvServer.get(kvm.getKey());
                     response_kvm.setMessage(null);
                     response_kvm.setKey(kvm.getKey());
                     response_kvm.setValue(value);
+                }else if (kvm.getMsgType().equals(DEL_REQ)) {
+                    kvServer.del(kvm.getKey());
+                } else if (kvm.getMsgType().equals(PUT_REQ)) {
+                    kvServer.put(kvm.getKey(), kvm.getValue());
                 }
                 response_kvm.sendMessage(master);
             }
