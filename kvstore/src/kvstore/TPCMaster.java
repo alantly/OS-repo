@@ -5,6 +5,9 @@ import static kvstore.KVConstants.*;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Condition;
+
 
 public class TPCMaster {
 
@@ -12,6 +15,9 @@ public class TPCMaster {
     public KVCache masterCache;
     private ArrayList<TPCSlaveInfo> slaves;
     private TPCSlaveInfo deadSlave;
+    private HashSet<Long> slaveIDs;
+    final Lock lock;
+    final Condition hasFinishedRegistration;
 
     public static final int TIMEOUT = 3000;
 
@@ -27,6 +33,9 @@ public class TPCMaster {
         // implement me
         this.deadSlave = null;
         this.slaves = new ArrayList<TPCSlaveInfo>();
+        this.slaveIDs = new HashSet<Long>();
+        this.lock = new ReentrantLock();
+        this.hasFinishedRegistration = lock.newCondition();
     }
 
     /**
@@ -37,34 +46,39 @@ public class TPCMaster {
      * @param slave the slaveInfo to be registered
      */
     public void registerSlave(TPCSlaveInfo slave) {
-        // check if throw error if curnumslaves == numSlaves
-        // set flag to true
         // implement me
+        this.lock.lock();
         if (deadSlave != null && slave.getSlaveID() == deadSlave.getSlaveID()) {
             deadSlave = null;
-        } else if (slaves.size() == numSlaves) {
-            // doing nothing
+        } else if (slaves.size() == numSlaves || slaveIDs.contains(slave.getSlaveID())) {
+            // doing nothing if we already have numSlaves or a slave is trying to reregister even though it is not dead.
         } else {
             long slave_id = slave.getSlaveID();
-
             if (slaves.size() == 0) {
                 slaves.add(slave);
+                slaveIDs.add(slave_id);
             } else {
                 if (isLessThanUnsigned(slave_id,slaves.get(0).getSlaveID())) {
                     slaves.add(0, slave);
+                    slaveIDs.add(slave_id);
                 } else if (!isLessThanEqualUnsigned(slave_id, slaves.get(slaves.size() - 1).getSlaveID())) {
                     slaves.add(slave);
+                    slaveIDs.add(slave_id);
                 } else {
                     for (int i = 0; i < slaves.size() - 1; i ++) {
                         long previous_id = slaves.get(i).getSlaveID();
                         long next_id = slaves.get(i + 1).getSlaveID();
                         if (isLessThanUnsigned(previous_id, slave_id) && isLessThanUnsigned(slave_id, next_id)) {
                             slaves.add(i+1, slave);
+                            slaveIDs.add(slave_id);
                         }
                     }
                 }
             }
         }
+
+        this.hasFinishedRegistration.signalAll();
+        this.lock.unlock();
         return;
     }
 
@@ -210,13 +224,12 @@ public class TPCMaster {
         String msgkey = msg.getKey();
         String msgtype = msg.getMsgType();
         String value = null;
+        String response_msg;
         TPCSlaveInfo slave1 = null;
         
-        /*
-        if (!(msgtype.equals(KVConstants.GET_REQ))) {
-            throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
-        }
-        */
+        try {
+            blockUntilRegisterComplete();
+        } catch (InterruptedException ite) {}
 
         Lock cacheLock = this.masterCache.getLock(msgkey);
         // Try getting from the masterCache
@@ -236,8 +249,13 @@ public class TPCMaster {
         response = new KVMessage(nSocket, TIMEOUT);
         value = response.getValue();
         slave1.closeHost(nSocket);
+        response_msg = response.getMessage();
 
-        if (value == null) {
+        if (response_msg.equals(ERROR_NO_SUCH_KEY)) {
+            throw new KVException(response);
+        } else if (response_msg.equals(ERROR_COULD_NOT_CONNECT)) {
+            //first replica is dead, mark as dead.
+            deadSlave = slave1; 
             // Try getting from second slave
             TPCSlaveInfo slave2 = this.findSuccessor(slave1);
             nSocket = slave2.connectHost(TIMEOUT);
@@ -245,10 +263,10 @@ public class TPCMaster {
             response = new KVMessage(nSocket, TIMEOUT);
             value = response.getValue();
         }
-        if (value == null) {
-            throw new KVException(KVConstants.ERROR_INVALID_KEY);
-        }
-        else {
+        
+        if (response_msg.equals(ERROR_NO_SUCH_KEY)) {
+            throw new KVException(response);
+        } else {
             // Update MasterCache
             try {
             cacheLock.lock();
@@ -259,5 +277,13 @@ public class TPCMaster {
         }
         return value; 
         
+    }
+
+    private void blockUntilRegisterComplete() throws InterruptedException {
+        this.lock.lock();
+        while (this.slaves.size() < numSlaves) {
+            this.hasFinishedRegistration.await();
+        }
+        this.lock.unlock();
     }
 }
