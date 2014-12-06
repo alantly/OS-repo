@@ -15,8 +15,8 @@ public class TPCMaster {
     public KVCache masterCache;
     private ArrayList<TPCSlaveInfo> slaves;
     private TPCSlaveInfo deadSlave;
-    public HashSet<Long> slaveIDs;
-    final Lock registerLock;
+    private HashSet<Long> slaveIDs;
+    final Lock lock;
     final Condition hasFinishedRegistration;
 
     public static final int TIMEOUT = 3000;
@@ -34,8 +34,8 @@ public class TPCMaster {
         this.deadSlave = null;
         this.slaves = new ArrayList<TPCSlaveInfo>();
         this.slaveIDs = new HashSet<Long>();
-        this.registerLock = new ReentrantLock();
-        this.hasFinishedRegistration = registerLock.newCondition();
+        this.lock = new ReentrantLock();
+        this.hasFinishedRegistration = lock.newCondition();
     }
 
     /**
@@ -47,7 +47,7 @@ public class TPCMaster {
      */
     public void registerSlave(TPCSlaveInfo slave) {
         // implement me
-        this.registerLock.lock();
+        this.lock.lock();
         if (deadSlave != null && slave.getSlaveID() == deadSlave.getSlaveID()) {
             deadSlave = null;
         } else if (slaves.size() == numSlaves || slaveIDs.contains(slave.getSlaveID())) {
@@ -78,7 +78,7 @@ public class TPCMaster {
         }
 
         this.hasFinishedRegistration.signalAll();
-        this.registerLock.unlock();
+        this.lock.unlock();
         return;
     }
 
@@ -202,19 +202,6 @@ public class TPCMaster {
     public synchronized void handleTPCRequest(KVMessage msg, boolean isPutReq)
             throws KVException {
         // implement me
-        try {
-            blockUntilRegisterComplete();
-        } catch (InterruptedException ite) {}        
-
-        if (isPutReq) {
-            String key = msg.getKey();
-            TPCSlaveInfo slave1 = findFirstReplica(key);
-            TPCSlaveInfo slave2 = findSuccessor(slave1);
-            //do TPC
-        } else {
-
-        }
-
     }
 
     /**
@@ -264,9 +251,9 @@ public class TPCMaster {
         slave1.closeHost(nSocket);
         response_msg = response.getMessage();
 
-        if (response_msg != null && response_msg.equals(ERROR_NO_SUCH_KEY)) {
+        if (response_msg.equals(ERROR_NO_SUCH_KEY)) {
             throw new KVException(response);
-        } else if (response_msg != null && response_msg.equals(ERROR_COULD_NOT_CONNECT)) {
+        } else if (response_msg.equals(ERROR_COULD_NOT_CONNECT)) {
             //first replica is dead, mark as dead.
             deadSlave = slave1; 
             // Try getting from second slave
@@ -277,7 +264,7 @@ public class TPCMaster {
             value = response.getValue();
         }
         
-        if (response_msg != null && response_msg.equals(ERROR_NO_SUCH_KEY)) {
+        if (response_msg.equals(ERROR_NO_SUCH_KEY)) {
             throw new KVException(response);
         } else {
             // Update MasterCache
@@ -291,16 +278,12 @@ public class TPCMaster {
         return value; 
         
     }
-    /**
-     * Performs a wait until numSlaves slaves have registered.
-     *
-     * @throws InterruptedException if a CPU interrupt occurs. Check Java API for more details
-     */
+
     private void blockUntilRegisterComplete() throws InterruptedException {
-        this.registerLock.lock();
+        this.lock.lock();
         while (this.slaves.size() < numSlaves) {
             this.hasFinishedRegistration.await();
         }
-        this.registerLock.unlock();
+        this.lock.unlock();
     }
 }
