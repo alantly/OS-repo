@@ -16,7 +16,6 @@ public class TPCMasterHandler implements NetworkHandler {
     public KVServer kvServer;
     public TPCLog tpcLog;
     public ThreadPool threadpool;
-
     // implement me
 
     /**
@@ -96,6 +95,10 @@ public class TPCMasterHandler implements NetworkHandler {
         private Socket master;
         private KVServer kvServer;
         private TPCLog tpcLog;
+        private KVMessage vote_response_kvm;
+        private KVMessage master_global_decision_kvm;
+        private KVMessage ack_kvm;
+
 
         public TCPMasterHandlerRunner(Socket master, KVServer kvServer, TPCLog tpcLog) {
             this.master = master;
@@ -107,20 +110,69 @@ public class TPCMasterHandler implements NetworkHandler {
         public void run() {
             KVMessage response_kvm = new KVMessage(RESP, SUCCESS);
             try {
-                KVMessage kvm = new KVMessage(master);
+                KVMessage request_kvm = new KVMessage(master);
                 // add every msg to our log file  
-                this.tpcLog.appendAndFlush(kvm);
-                if (kvm.getMsgType().equals(GET_REQ)) {
-                    String value = kvServer.get(kvm.getKey());
+                if (request_kvm.getMsgType().equals(GET_REQ)) {
+
+                    String value = kvServer.get(request_kvm.getKey());
                     response_kvm.setMessage(null);
-                    response_kvm.setKey(kvm.getKey());
+                    response_kvm.setKey(request_kvm.getKey());
                     response_kvm.setValue(value);
-                }else if (kvm.getMsgType().equals(DEL_REQ)) {
-                    kvServer.del(kvm.getKey());
-                } else if (kvm.getMsgType().equals(PUT_REQ)) {
-                    kvServer.put(kvm.getKey(), kvm.getValue());
+                    response_kvm.sendMessage(master);
+
+                } else if (request_kvm.getMsgType().equals(DEL_REQ)) {
+
+                    if (kvServer.hasKey(response_kvm.getKey())) {
+                        this.tpcLog.appendAndFlush(request_kvm);
+                        vote_response_kvm = new KVMessage(READY);
+                    } else {
+                        vote_response_kvm = new KVMessage(ABORT, ERROR_NO_SUCH_KEY);
+                    }
+                    vote_response_kvm.sendMessage(master);
+                    master_global_decision_kvm = new KVMessage(master);
+                    this.tpcLog.appendAndFlush(master_global_decision_kvm);
+                    if (master_global_decision_kvm.getMsgType().equals(COMMIT)) {
+                        kvServer.del(request_kvm.getKey());
+                    }
+                    ack_kvm = new KVMessage(ACK);
+                    ack_kvm.sendMessage(master);
+
+                } else if (request_kvm.getMsgType().equals(PUT_REQ)) {
+
+                    String check_ready = kvServer.is_valid_key_value(request_kvm.getKey(), request_kvm.getValue());
+                    if (check_ready != null) {
+                        this.tpcLog.appendAndFlush(request_kvm);
+                        vote_response_kvm = new KVMessage(READY);
+                    } else {
+                        vote_response_kvm = new KVMessage(ABORT, check_ready);
+                    }
+                    vote_response_kvm.sendMessage(master);
+                    master_global_decision_kvm = new KVMessage(master);
+                    this.tpcLog.appendAndFlush(master_global_decision_kvm);
+                    if (master_global_decision_kvm.getMsgType().equals(COMMIT)) {
+                        kvServer.put(request_kvm.getKey(), request_kvm.getValue());
+                    }
+                    ack_kvm = new KVMessage(ACK);
+                    ack_kvm.sendMessage(master);
+
+                } else if (request_kvm.getMsgType().equals(COMMIT)) { 
+
+                    KVMessage last_entry_kvm = this.tpcLog.getLastEntry();
+                    this.tpcLog.appendAndFlush(request_kvm);
+                    if (last_entry_kvm != null && last_entry_kvm.getMsgType().equals(DEL_REQ)) {
+                         kvServer.del(request_kvm.getKey());
+                    } else if (last_entry_kvm != null && last_entry_kvm.getMsgType().equals(PUT_REQ)) {
+                        kvServer.put(request_kvm.getKey(), request_kvm.getValue());
+                    }
+                    ack_kvm = new KVMessage(ACK);
+                    ack_kvm.sendMessage(master);
+
+                } else if (request_kvm.getMsgType().equals(ABORT)) { 
+                    
+                    this.tpcLog.appendAndFlush(request_kvm);
+                    ack_kvm = new KVMessage(ACK);
+                    ack_kvm.sendMessage(master);
                 }
-                response_kvm.sendMessage(master);
             }
             catch (KVException kve) {
                 response_kvm = kve.getKVMessage();

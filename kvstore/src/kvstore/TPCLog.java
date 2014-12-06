@@ -110,14 +110,22 @@ public class TPCLog {
     public void rebuildServer() throws KVException {
         loadFromDisk();
         // implement me
+        KVMessage kvm_action = null;
         for (KVMessage kvm : entries) {
-            if (kvm.getMsgType().equals(DEL_REQ)) {
-                kvServer.del(kvm.getKey());
+            if (kvm.getMsgType().equals(DEL_REQ) || kvm.getMsgType().equals(PUT_REQ)) {
+                kvm_action = kvm;
             }
-            else if (kvm.getMsgType().equals(PUT_REQ)) {
-                kvServer.put(kvm.getKey(), kvm.getValue());
-            } else {
-                // do nothing. this includes GET_REQ 
+            else if (kvm.getMsgType().equals(COMMIT)) {
+                if (kvm_action != null) {
+                    if (kvm_action.getMsgType().equals(PUT_REQ)) {
+                        kvServer.put(kvm_action.getKey(), kvm_action.getValue());
+                    } else if (kvm_action.getMsgType().equals(DEL_REQ)) {
+                        kvServer.del(kvm_action.getKey());
+                    }
+                    kvm_action = null;
+                }
+            } else if (kvm.getMsgType().equals(ABORT)) { 
+                kvm_action = null;
             }
         }
     }

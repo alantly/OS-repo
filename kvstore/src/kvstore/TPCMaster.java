@@ -49,6 +49,7 @@ public class TPCMaster {
         // implement me
         this.registerLock.lock();
         if (deadSlave != null && slave.getSlaveID() == deadSlave.getSlaveID()) {
+            deadSlave.port = slave.getPort();
             deadSlave = null;
         } else if (slaves.size() == numSlaves || slaveIDs.contains(slave.getSlaveID())) {
             // doing nothing if we already have numSlaves or a slave is trying to reregister even though it is not dead.
@@ -206,12 +207,72 @@ public class TPCMaster {
             blockUntilRegisterComplete();
         } catch (InterruptedException ite) {}        
 
-        if (isPutReq) {
-            String key = msg.getKey();
-            TPCSlaveInfo slave1 = findFirstReplica(key);
-            TPCSlaveInfo slave2 = findSuccessor(slave1);
-            //do TPC
+        // if (isPutReq) { check for valid keys, etc
+
+        // } else {
+
+        // }
+
+
+
+        String key = msg.getKey();
+        TPCSlaveInfo slave1 = findFirstReplica(key);
+        TPCSlaveInfo slave2 = findSuccessor(slave1);
+        Socket s1_socket = null;
+        Socket s2_socket = null;
+        try {
+            s1_socket = slave1.connectHost(TIMEOUT);
+            msg.sendMessage(s1_socket);
+        } catch (KVException kve) {
+            deadSlave = slave1;
+            throw kve;
+        }
+        try {
+            s2_socket = slave2.connectHost(TIMEOUT);
+            msg.sendMessage(s2_socket);
+        } catch (KVException kve) {
+            deadSlave = slave2;
+            throw kve;
+        }
+        KVMessage slave1_phase1_kvm = null;
+        KVMessage slave2_phase1_kvm = null;
+        try {
+            slave1_phase1_kvm = new KVMessage(s1_socket,TIMEOUT);
+        } catch (KVException kve) {
+            deadSlave = slave1;
+            slave1_phase1_kvm = new KVMessage(ABORT);
+        }
+        try {
+            slave2_phase1_kvm = new KVMessage(s2_socket,TIMEOUT);
+        } catch (KVException kve) {
+            deadSlave = slave2;
+            slave2_phase1_kvm = new KVMessage(ABORT);
+        }
+
+        //phase 2
+        KVMessage global_decision_kvm = null;
+
+        if (slave1_phase1_kvm.getMsgType().equals(READY) && slave2_phase1_kvm.getMsgType().equals(READY)) {
+            global_decision_kvm = new KVMessage(COMMIT);
         } else {
+            global_decision_kvm = new KVMessage(ABORT);
+        }
+
+        KVMessage s1_ack_kvm = null;
+        KVMessage s2_ack_kvm = null;
+        while (s1_ack_kvm == null || s2_ack_kvm == null) {
+            if (s1_ack_kvm == null) {
+                global_decision_kvm.sendMessage(s1_socket);
+                s1_ack_kvm = new KVMessage(s1_socket,TIMEOUT);
+                if (s1_ack_kvm != null && !s1_ack_kvm.getMsgType().equals(ACK))
+                    throw new KVException(ERROR_INVALID_FORMAT);
+            }
+            if (s2_ack_kvm == null) {
+                global_decision_kvm.sendMessage(s2_socket);
+                s2_ack_kvm = new KVMessage(s2_socket,TIMEOUT);
+                if (s2_ack_kvm != null && !s2_ack_kvm.getMsgType().equals(ACK))
+                    throw new KVException(ERROR_INVALID_FORMAT);
+            }
 
         }
 

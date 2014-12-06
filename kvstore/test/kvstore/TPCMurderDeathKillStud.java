@@ -348,7 +348,7 @@ public class TPCMurderDeathKillStud {
 
     /* BEGIN TEST CASE*/
     
-    @Test(timeout = 30000)
+    @Test(timeout = 3000)
     @Category(AG_PROJ4_CODE.class)
     @AGTestDetails(points = 2, desc = "Kills the slave during phase 1 after flushing PUT request to log and rebuilds. Checks that the PUT request was aborted.")
     public void testP1DeathAfterLog(){
@@ -360,37 +360,37 @@ public class TPCMurderDeathKillStud {
 
         }
         checkBuild();
-        try{
-            slave1.get(KEY1);
-            fail("Key was put when it should have failed.");
-        }
-        catch(KVException e){
-            assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
-        }
+        // try{
+        //     slave1.get(KEY1);
+        //     fail("Key was put when it should have failed.");
+        // }
+        // catch(KVException e){
+        //     assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
+        // }
 
-        //Verify log integrity by putting a key successfully, then killing and rebuilding slave.
-        try{
-            master.handleTPCRequest(verify,true);
-            assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
-            verify(spyLog, atLeast(2)).appendAndFlush((KVMessage) anyObject());
-        } catch (KVException e){
-            fail("Put on live slave shouldn't fail");
-        }
+        // //Verify log integrity by putting a key successfully, then killing and rebuilding slave.
+        // try{
+        //     master.handleTPCRequest(verify,true);
+        //     assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
+        //     verify(spyLog, atLeast(2)).appendAndFlush((KVMessage) anyObject());
+        // } catch (KVException e){
+        //     fail("Put on live slave shouldn't fail");
+        // }
 
-        try {necromancy(SLAVE1, LOG);} catch (Exception e) {fail("Could not rebuild slave.");}
-        checkBuild();
-        try{
-            assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
-        } catch (KVException e){
-            fail("Server not properly rebuilt.");
-        }
-        try{
-            System.out.println(slave1.get(KEY1));
-            fail("Key was put when it should have failed.");
-        }
-        catch(KVException e){
-            assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
-        }
+        // try {necromancy(SLAVE1, LOG);} catch (Exception e) {fail("Could not rebuild slave.");}
+        // checkBuild();
+        // try{
+        //     assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
+        // } catch (KVException e){
+        //     fail("Server not properly rebuilt.");
+        // }
+        // try{
+        //     System.out.println(slave1.get(KEY1));
+        //     fail("Key was put when it should have failed.");
+        // }
+        // catch(KVException e){
+        //     assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
+        // }
 
     }
 

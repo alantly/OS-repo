@@ -173,4 +173,12 @@ public class KVServer implements KeyValueInterface {
         return dataStore.toString() + dataCache.toString();
     }
 
+    public String is_valid_key_value(String k, String v) {
+        if (k.length() > MAX_KEY_SIZE)
+            return KVConstants.ERROR_OVERSIZED_KEY;
+        else if (v.length() > MAX_VAL_SIZE)
+            return KVConstants.ERROR_OVERSIZED_VALUE;
+        return null;
+    }
+
 }
