@@ -67,7 +67,7 @@ public class TPCMasterHandler implements NetworkHandler {
             Socket s = new Socket(masterHostname, 9090);
             kvm.sendMessage(s);
             KVMessage response = new KVMessage(s);
-            if (!response.getMsgType().equals(RESP) || !response.getMessage().equals("Successfully registered "+ msg)) {
+            if (!response.getMsgType().equals(RESP) || response.getMessage().equals("Unsuccessful registration "+ msg)) {
                 throw new KVException(ERROR_INVALID_FORMAT);
             }
         } catch (UnknownHostException uhe) {
@@ -85,7 +85,7 @@ public class TPCMasterHandler implements NetworkHandler {
      */
     @Override
     public void handle(Socket master) {
-        TCPMasterHandlerRunner job = new TCPMasterHandlerRunner(master, this.kvServer, this.tpcLog);
+        TCPMasterHandlerRunner job = new TCPMasterHandlerRunner(master, this.kvServer);
         try {
             this.threadpool.addJob(job);
         }
@@ -95,12 +95,10 @@ public class TPCMasterHandler implements NetworkHandler {
     public class TCPMasterHandlerRunner implements Runnable {
         private Socket master;
         private KVServer kvServer;
-        private TPCLog tpcLog;
 
-        public TCPMasterHandlerRunner(Socket master, KVServer kvServer, TPCLog tpcLog) {
+        public TCPMasterHandlerRunner(Socket master, KVServer kvServer) {
             this.master = master;
             this.kvServer = kvServer;
-            this.tpcLog = tpcLog;
         }
 
         @Override
@@ -108,8 +106,6 @@ public class TPCMasterHandler implements NetworkHandler {
             KVMessage response_kvm = new KVMessage(RESP, SUCCESS);
             try {
                 KVMessage kvm = new KVMessage(master);
-                // add every msg to our log file
-                this.tpcLog.appendAndFlush(kvm);
                 if (kvm.getMsgType().equals(GET_REQ)) {
                     String value = kvServer.get(kvm.getKey());
                     response_kvm.setMessage(null);

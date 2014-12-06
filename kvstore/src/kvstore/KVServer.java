@@ -5,6 +5,8 @@ import static kvstore.KVConstants.ERROR_OVERSIZED_VALUE;
 import static kvstore.KVConstants.RESP;
 
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Condition;
 
 /**
  * This class services all storage logic for an individual key-value server.
@@ -16,6 +18,8 @@ public class KVServer implements KeyValueInterface {
 
     private KVStore dataStore;
     private KVCache dataCache;
+    private Lock writeLock;
+    private String busyKey;
 
     private static final int MAX_KEY_SIZE = 256;
     private static final int MAX_VAL_SIZE = 256 * 1024;
@@ -30,6 +34,21 @@ public class KVServer implements KeyValueInterface {
     public KVServer(int numSets, int maxElemsPerSet) {
         this.dataCache = new KVCache(numSets, maxElemsPerSet);
         this.dataStore = new KVStore();
+        this.writeLock = new ReentrantLock();
+        this.busyKey = null;
+    }
+
+    /**
+     * Performs a check if busyKey is being updated.
+     * If it is true, wait until put/get is complete.
+     *
+     * @param  key String key
+     */
+    private void checkBusy(String key) {
+        if (key.equals(this.busyKey)) {
+            writeLock.lock();
+            writeLock.unlock();
+        }
     }
 
     /**
@@ -42,7 +61,9 @@ public class KVServer implements KeyValueInterface {
     @Override
     public void put(String key, String value) throws KVException {
         // implement me
-        // can get lock from this.dataCache.getLock(key)
+
+        this.writeLock.lock();
+        this.busyKey = key;
         if (key.length() > MAX_KEY_SIZE)
             throw new KVException(KVConstants.ERROR_OVERSIZED_KEY);
         else if (value.length() > MAX_VAL_SIZE)
@@ -57,7 +78,10 @@ public class KVServer implements KeyValueInterface {
         }
         finally {
             cachelock.unlock();
+            this.busyKey = null;
+            this.writeLock.unlock();
         }
+
     }
 
     /**
@@ -74,6 +98,8 @@ public class KVServer implements KeyValueInterface {
         String cacheValue = null;
         String storeValue = null;
         String returnValue = null;
+
+        checkBusy(key);
 
         Lock cachelock = this.dataCache.getLock(key);
 
@@ -107,6 +133,8 @@ public class KVServer implements KeyValueInterface {
     @Override
     public void del(String key) throws KVException {
         // implement me
+        this.writeLock.lock();
+        this.busyKey = key;
         Lock cachelock = this.dataCache.getLock(key);
 
         try {
@@ -114,11 +142,10 @@ public class KVServer implements KeyValueInterface {
             this.dataStore.del(key);
             this.dataCache.del(key);
         }
-        catch (KVException kve) {
-            throw kve;
-        }
         finally {
             cachelock.unlock();
+            this.busyKey = null;
+            this.writeLock.unlock();
         }
     }
 

@@ -33,7 +33,11 @@ public final class AGCategories {
         KVStoreTest.class,
         SocketServerTest.class,
         ThreadPoolTest.class,
-        KVServerTest.class
+        KVServerTest.class,
+        ClientWrapper.class,
+        ServerRunner.class,
+        TPCMasterHandlerGetTest.class,
+        TPCMasterTest.class
     })
     @IncludeCategory(AG_PROJ3_CODE.class)
     @FixMethodOrder(MethodSorters.NAME_ASCENDING)

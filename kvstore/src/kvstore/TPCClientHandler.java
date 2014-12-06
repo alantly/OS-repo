@@ -73,7 +73,8 @@ public class TPCClientHandler implements NetworkHandler {
                     response.setKey(kvm.getKey());
                     response.setMessage(null);
                     response.sendMessage(client);
-                }
+                } //put requests need to set isPut
+                //del requests need isPut = False
 
             } catch (KVException kve) {
                 response = kve.getKVMessage();
