@@ -69,6 +69,7 @@ public class TPCMasterHandler implements NetworkHandler {
             KVMessage response = new KVMessage(s);
             System.out.println("@TPCMasterHandler: got registeration resp: "+response.getMessage());
             if (!response.getMsgType().equals(RESP) || response.getMessage().equals("Unsuccessful registration "+ msg)) {
+                System.out.println("@TPCMasterHandler: unsuccessful registeration");
                 throw new KVException(ERROR_INVALID_FORMAT);
             }
         } catch (UnknownHostException uhe) {
