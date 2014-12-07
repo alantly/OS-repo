@@ -68,22 +68,15 @@ public class TPCRegistrationHandler implements NetworkHandler {
             KVMessage response_kvm = new KVMessage(RESP);
             try {
                 KVMessage kvm = new KVMessage(client);
-                System.out.println("@Regis.Handler: got new register msg: "+ kvm.getMsgType());
                 if (kvm.getMsgType().equals(REGISTER)) {
                     String msg = kvm.getMessage();
                     TPCSlaveInfo slaveInfo = new TPCSlaveInfo(msg);
-                    if (!this.master.slaveIDs.contains(slaveInfo.getSlaveID()) ||
-                        (this.master.deadSlave != null && slaveInfo.getSlaveID() == this.master.deadSlave.getSlaveID())) {
-                        System.out.println("@Regis.Handler: Sending request to master");
-                        master.registerSlave(slaveInfo);
-                        response_kvm.setMessage("Successfully registered "+ msg);
-                        if (!master.slaveIDs.contains(slaveInfo.getSlaveID())) 
-                            response_kvm.setMessage("Unsuccessful registration "+ msg);
-                        System.out.println("@Regis.Handler: Results: " + response_kvm.getMessage());
-                    } else {
-                        System.out.println("@Regis.Handler: Unsuccessful. alive slave trying to reregister.");
+                    System.out.println("@Regis.Handler: Sending request to master");
+                    master.registerSlave(slaveInfo);
+                    response_kvm.setMessage("Successfully registered "+ msg);
+                    if (!master.slaveIDs.contains(slaveInfo.getSlaveID())) 
                         response_kvm.setMessage("Unsuccessful registration "+ msg);
-                    }
+                    System.out.println("@Regis.Handler: Register results: " + response_kvm.getMessage());
                     response_kvm.sendMessage(client);
                 }
             } catch (KVException kve) {

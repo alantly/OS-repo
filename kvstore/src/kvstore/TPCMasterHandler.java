@@ -168,9 +168,9 @@ public class TPCMasterHandler implements NetworkHandler {
                     KVMessage last_entry_kvm = this.tpcLog.getLastEntry();
                     this.tpcLog.appendAndFlush(request_kvm);
                     if (last_entry_kvm != null && last_entry_kvm.getMsgType().equals(DEL_REQ)) {
-                         kvServer.del(request_kvm.getKey());
+                         kvServer.del(last_entry_kvm.getKey());
                     } else if (last_entry_kvm != null && last_entry_kvm.getMsgType().equals(PUT_REQ)) {
-                        kvServer.put(request_kvm.getKey(), request_kvm.getValue());
+                        kvServer.put(last_entry_kvm.getKey(), last_entry_kvm.getValue());
                     }
                     ack_kvm = new KVMessage(ACK);
                     ack_kvm.sendMessage(master);

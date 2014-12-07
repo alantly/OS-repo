@@ -14,7 +14,6 @@ public class TPCMaster {
     public int numSlaves;
     public KVCache masterCache;
     private ArrayList<TPCSlaveInfo> slaves;
-    public TPCSlaveInfo deadSlave;
     public HashSet<Long> slaveIDs;
     final Lock registerLock;
     final Condition hasFinishedRegistration;
@@ -31,7 +30,6 @@ public class TPCMaster {
         this.numSlaves = numSlaves;
         this.masterCache = cache;
         // implement me
-        this.deadSlave = null;
         this.slaves = new ArrayList<TPCSlaveInfo>();
         this.slaveIDs = new HashSet<Long>();
         this.registerLock = new ReentrantLock();
@@ -49,11 +47,10 @@ public class TPCMaster {
         // implement me
         System.out.println("@Master: Registering: " + slave.getSlaveID());
         this.registerLock.lock();
-        if (deadSlave != null && slave.getSlaveID() == deadSlave.getSlaveID()) {
-            deadSlave.port = slave.getPort();
-            deadSlave = null;
+        if (slaveIDs.contains(slave.getSlaveID())) {
+            getSlave(slave.getSlaveID()).port = slave.getPort(); //can we use this??? or should we make a hashmap instead of set
             System.out.println("@Master: Reregistering dead slave");
-        } else if (slaves.size() == numSlaves || slaveIDs.contains(slave.getSlaveID())) {
+        } else if (slaves.size() == numSlaves) {
             // doing nothing if we already have numSlaves or a slave is trying to reregister even though it is not dead.
         } else {
             long slave_id = slave.getSlaveID();
@@ -176,9 +173,6 @@ public class TPCMaster {
      * @return The number of slaves currently registered.
      */
     public int getNumRegisteredSlaves() {
-        if (deadSlave != null) {
-            return slaves.size() - 1;
-        }
         return slaves.size();
     }
 
@@ -220,52 +214,54 @@ public class TPCMaster {
         Socket s2_socket = null;
         try {
             s1_socket = slave1.connectHost(TIMEOUT);
-            msg.sendMessage(s1_socket);
         } catch (KVException kve) {
-            deadSlave = slave1;
             throw kve;
         }
         try {
             s2_socket = slave2.connectHost(TIMEOUT);
-            msg.sendMessage(s2_socket);
         } catch (KVException kve) {
-            deadSlave = slave2;
             throw kve;
         }
+
+        try {
+            msg.sendMessage(s1_socket);
+        } catch (KVException kve) {}
+        try {
+            msg.sendMessage(s2_socket);
+        } catch (KVException kve) {}
+
         System.out.println("@Master: Sent Request message to both slaves");
-        KVMessage slave1_phase1_kvm = null;
-        KVMessage slave2_phase1_kvm = null;
+        KVMessage s1_phase1_resp_kvm = null;
+        KVMessage s2_phase1_resp_kvm = null;
         try {
             System.out.println("@Master: try to get resp message 1");
-            slave1_phase1_kvm = new KVMessage(s1_socket,TIMEOUT);
+            s1_phase1_resp_kvm = new KVMessage(s1_socket,TIMEOUT);
             System.out.println("@Master: got resp1");
         } catch (KVException kve) {
             System.out.println("@Master: make fake resp1");
-            deadSlave = slave1;
-            slave1_phase1_kvm = new KVMessage(ABORT,ERROR_SOCKET_TIMEOUT);
+            s1_phase1_resp_kvm = new KVMessage(ABORT,ERROR_SOCKET_TIMEOUT);
         }
         try {
             System.out.println("@Master: try to get resp message 2");
-            slave2_phase1_kvm = new KVMessage(s2_socket,TIMEOUT);
+            s2_phase1_resp_kvm = new KVMessage(s2_socket,TIMEOUT);
             System.out.println("@Master: got resp2");
         } catch (KVException kve) {
             System.out.println("@Master: make fake resp2");
-            deadSlave = slave2;
-            slave2_phase1_kvm = new KVMessage(ABORT,ERROR_SOCKET_TIMEOUT);
+            s2_phase1_resp_kvm = new KVMessage(ABORT,ERROR_SOCKET_TIMEOUT);
         }
 
         //phase 2
         KVMessage global_decision_kvm = null;
         boolean decision_abort = false;
         KVException exceptionToThrow = null;
-        if (slave1_phase1_kvm.getMsgType().equals(READY) && slave2_phase1_kvm.getMsgType().equals(READY)) {
+        if (s1_phase1_resp_kvm.getMsgType().equals(READY) && s2_phase1_resp_kvm.getMsgType().equals(READY)) {
             System.out.println("@Master: Global Commit");
             global_decision_kvm = new KVMessage(COMMIT);
         } else {
-            if (slave1_phase1_kvm.getMsgType().equals(READY)) { //grab exception to throw later.
-                exceptionToThrow = new KVException(slave2_phase1_kvm.getMessage());
+            if (s1_phase1_resp_kvm.getMsgType().equals(READY)) { //grab exception to throw later.
+                exceptionToThrow = new KVException(s2_phase1_resp_kvm.getMessage());
             } else
-                exceptionToThrow = new KVException(slave1_phase1_kvm.getMessage());
+                exceptionToThrow = new KVException(s1_phase1_resp_kvm.getMessage());
             System.out.println("@Master: Global Abort");
             decision_abort = true;
             global_decision_kvm = new KVMessage(ABORT);
@@ -378,8 +374,6 @@ public class TPCMaster {
         if (response_msg != null && response_msg.equals(ERROR_NO_SUCH_KEY)) {
             throw new KVException(response);
         } else if (response_msg != null && response_msg.equals(ERROR_COULD_NOT_CONNECT)) {
-            //first replica is dead, mark as dead.
-            deadSlave = slave1; 
             // Try getting from second slave
             TPCSlaveInfo slave2 = this.findSuccessor(slave1);
             nSocket = slave2.connectHost(TIMEOUT);
