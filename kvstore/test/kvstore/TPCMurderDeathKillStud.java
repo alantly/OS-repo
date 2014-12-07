@@ -355,7 +355,7 @@ public class TPCMurderDeathKillStud {
 
     /* BEGIN TEST CASE*/
     
-    @Test(timeout = 3000*7)
+    @Test(timeout = 30000)
     @Category(AG_PROJ4_CODE.class)
     @AGTestDetails(points = 2, desc = "Kills the slave during phase 1 after flushing PUT request to log and rebuilds. Checks that the PUT request was aborted.")
     public void testP1DeathAfterLog(){

@@ -134,13 +134,6 @@ public class TPCMasterHandler implements NetworkHandler {
                         vote_response_kvm = new KVMessage(ABORT, ERROR_NO_SUCH_KEY);
                     }
                     vote_response_kvm.sendMessage(master);
-                    // master_global_decision_kvm = new KVMessage(master);
-                    // this.tpcLog.appendAndFlush(master_global_decision_kvm);
-                    // if (master_global_decision_kvm.getMsgType().equals(COMMIT)) {
-                    //     kvServer.del(request_kvm.getKey());
-                    // }
-                    // ack_kvm = new KVMessage(ACK);
-                    // ack_kvm.sendMessage(master);
 
                 } else if (request_kvm.getMsgType().equals(PUT_REQ)) {
 
@@ -155,13 +148,6 @@ public class TPCMasterHandler implements NetworkHandler {
                         vote_response_kvm = new KVMessage(ABORT, check_ready);
                     }
                     vote_response_kvm.sendMessage(master);
-                    // master_global_decision_kvm = new KVMessage(master);
-                    // this.tpcLog.appendAndFlush(master_global_decision_kvm);
-                    // if (master_global_decision_kvm.getMsgType().equals(COMMIT)) {
-                    //     kvServer.put(request_kvm.getKey(), request_kvm.getValue());
-                    // }
-                    // ack_kvm = new KVMessage(ACK);
-                    // ack_kvm.sendMessage(master);
 
                 } else if (request_kvm.getMsgType().equals(COMMIT)) { 
 
