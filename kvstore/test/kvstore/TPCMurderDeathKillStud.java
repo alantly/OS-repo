@@ -359,9 +359,8 @@ public class TPCMurderDeathKillStud {
     @Category(AG_PROJ4_CODE.class)
     @AGTestDetails(points = 2, desc = "Kills the slave during phase 1 after flushing PUT request to log and rebuilds. Checks that the PUT request was aborted.")
     public void testP1DeathAfterLog(){
-        System.out.println("@MurderTest: Start mock slave");
+
         try{startMockSlave(SLAVE1, 1);} catch (Exception e) {fail("can't start slave");}
-        System.out.println("@MurderTest: finish setup mock slave");
         try{
             master.handleTPCRequest(p1Death, true);
             fail("Shouldn't succeed");
@@ -378,7 +377,6 @@ public class TPCMurderDeathKillStud {
         
         //Verify log integrity by putting a key successfully, then killing and rebuilding slave.
         try{
-            System.out.println("-----------@MurderTest: Starting Second Test--------------");
             master.handleTPCRequest(verify,true);
             assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
             verify(spyLog, atLeast(2)).appendAndFlush((KVMessage) anyObject());
@@ -400,8 +398,7 @@ public class TPCMurderDeathKillStud {
         catch(KVException e){
             assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
         }
-        System.out.println("Test done");
+
     }
 
-  
 }
