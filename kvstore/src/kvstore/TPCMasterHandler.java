@@ -61,18 +61,21 @@ public class TPCMasterHandler implements NetworkHandler {
             throws KVException {
         // implement me
         try {
+            System.out.println("@TPCMasterHandler: Sending Register command");
             String msg = Long.toString(slaveID) + "@" + server.getHostname() + ":" + Integer.toString(server.getPort());
             KVMessage kvm = new KVMessage(REGISTER, msg);
             Socket s = new Socket(masterHostname, 9090);
             kvm.sendMessage(s);
             KVMessage response = new KVMessage(s);
+            System.out.println("@TPCMasterHandler: got registeration resp: "+response.getMessage());
             if (!response.getMsgType().equals(RESP) || response.getMessage().equals("Unsuccessful registration "+ msg)) {
                 throw new KVException(ERROR_INVALID_FORMAT);
             }
         } catch (UnknownHostException uhe) {
+            System.out.println("@TPCMasterHandler: Error with register master.1");
             throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
-
         } catch (IOException ioe) {
+            System.out.println("@TPCMasterHandler: Error with register master.2");
             throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
         }
     }
@@ -111,7 +114,7 @@ public class TPCMasterHandler implements NetworkHandler {
             KVMessage response_kvm = new KVMessage(RESP, SUCCESS);
             try {
                 KVMessage request_kvm = new KVMessage(master);
-                // add every msg to our log file  
+                System.out.println("@Slave: got a new request: " + request_kvm.getMsgType());
                 if (request_kvm.getMsgType().equals(GET_REQ)) {
 
                     String value = kvServer.get(request_kvm.getKey());
@@ -122,6 +125,7 @@ public class TPCMasterHandler implements NetworkHandler {
 
                 } else if (request_kvm.getMsgType().equals(DEL_REQ)) {
 
+                    System.out.println("@Slave: Doing phase 1 del req.");
                     if (kvServer.hasKey(response_kvm.getKey())) {
                         this.tpcLog.appendAndFlush(request_kvm);
                         vote_response_kvm = new KVMessage(READY);
@@ -129,31 +133,34 @@ public class TPCMasterHandler implements NetworkHandler {
                         vote_response_kvm = new KVMessage(ABORT, ERROR_NO_SUCH_KEY);
                     }
                     vote_response_kvm.sendMessage(master);
-                    master_global_decision_kvm = new KVMessage(master);
-                    this.tpcLog.appendAndFlush(master_global_decision_kvm);
-                    if (master_global_decision_kvm.getMsgType().equals(COMMIT)) {
-                        kvServer.del(request_kvm.getKey());
-                    }
-                    ack_kvm = new KVMessage(ACK);
-                    ack_kvm.sendMessage(master);
+                    // master_global_decision_kvm = new KVMessage(master);
+                    // this.tpcLog.appendAndFlush(master_global_decision_kvm);
+                    // if (master_global_decision_kvm.getMsgType().equals(COMMIT)) {
+                    //     kvServer.del(request_kvm.getKey());
+                    // }
+                    // ack_kvm = new KVMessage(ACK);
+                    // ack_kvm.sendMessage(master);
 
                 } else if (request_kvm.getMsgType().equals(PUT_REQ)) {
 
+                    System.out.println("@Slave: Doing phase 1 put req.");
                     String check_ready = kvServer.is_valid_key_value(request_kvm.getKey(), request_kvm.getValue());
-                    if (check_ready != null) {
+                    if (check_ready == null) {
+                        System.out.println("@Slave: About to flush: " + request_kvm.getMsgType() + " " + request_kvm.getKey()+ " " +request_kvm.getValue());
                         this.tpcLog.appendAndFlush(request_kvm);
+                        System.out.println("@Slave: Finished flush");
                         vote_response_kvm = new KVMessage(READY);
                     } else {
                         vote_response_kvm = new KVMessage(ABORT, check_ready);
                     }
                     vote_response_kvm.sendMessage(master);
-                    master_global_decision_kvm = new KVMessage(master);
-                    this.tpcLog.appendAndFlush(master_global_decision_kvm);
-                    if (master_global_decision_kvm.getMsgType().equals(COMMIT)) {
-                        kvServer.put(request_kvm.getKey(), request_kvm.getValue());
-                    }
-                    ack_kvm = new KVMessage(ACK);
-                    ack_kvm.sendMessage(master);
+                    // master_global_decision_kvm = new KVMessage(master);
+                    // this.tpcLog.appendAndFlush(master_global_decision_kvm);
+                    // if (master_global_decision_kvm.getMsgType().equals(COMMIT)) {
+                    //     kvServer.put(request_kvm.getKey(), request_kvm.getValue());
+                    // }
+                    // ack_kvm = new KVMessage(ACK);
+                    // ack_kvm.sendMessage(master);
 
                 } else if (request_kvm.getMsgType().equals(COMMIT)) { 
 
@@ -172,6 +179,7 @@ public class TPCMasterHandler implements NetworkHandler {
                     this.tpcLog.appendAndFlush(request_kvm);
                     ack_kvm = new KVMessage(ACK);
                     ack_kvm.sendMessage(master);
+
                 }
             }
             catch (KVException kve) {

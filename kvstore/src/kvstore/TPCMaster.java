@@ -14,7 +14,7 @@ public class TPCMaster {
     public int numSlaves;
     public KVCache masterCache;
     private ArrayList<TPCSlaveInfo> slaves;
-    private TPCSlaveInfo deadSlave;
+    public TPCSlaveInfo deadSlave;
     public HashSet<Long> slaveIDs;
     final Lock registerLock;
     final Condition hasFinishedRegistration;
@@ -47,10 +47,12 @@ public class TPCMaster {
      */
     public void registerSlave(TPCSlaveInfo slave) {
         // implement me
+        System.out.println("@Master: Registering: " + slave.getSlaveID());
         this.registerLock.lock();
         if (deadSlave != null && slave.getSlaveID() == deadSlave.getSlaveID()) {
             deadSlave.port = slave.getPort();
             deadSlave = null;
+            System.out.println("@Master: Reregistering dead slave");
         } else if (slaves.size() == numSlaves || slaveIDs.contains(slave.getSlaveID())) {
             // doing nothing if we already have numSlaves or a slave is trying to reregister even though it is not dead.
         } else {
@@ -186,6 +188,10 @@ public class TPCMaster {
      */
     public TPCSlaveInfo getSlave(long slaveId) {
         // implement me
+        for (TPCSlaveInfo slave : slaves) {
+            if (slave.getSlaveID() == slaveId)
+                return slave;
+        }
         return null;
     }
 
@@ -207,14 +213,6 @@ public class TPCMaster {
             blockUntilRegisterComplete();
         } catch (InterruptedException ite) {}        
 
-        // if (isPutReq) { check for valid keys, etc
-
-        // } else {
-
-        // }
-
-
-
         String key = msg.getKey();
         TPCSlaveInfo slave1 = findFirstReplica(key);
         TPCSlaveInfo slave2 = findSuccessor(slave1);
@@ -234,48 +232,100 @@ public class TPCMaster {
             deadSlave = slave2;
             throw kve;
         }
+        System.out.println("@Master: Sent Request message to both slaves");
         KVMessage slave1_phase1_kvm = null;
         KVMessage slave2_phase1_kvm = null;
         try {
+            System.out.println("@Master: try to get resp message 1");
             slave1_phase1_kvm = new KVMessage(s1_socket,TIMEOUT);
+            System.out.println("@Master: got resp1");
         } catch (KVException kve) {
+            System.out.println("@Master: make fake resp1");
             deadSlave = slave1;
-            slave1_phase1_kvm = new KVMessage(ABORT);
+            slave1_phase1_kvm = new KVMessage(ABORT,ERROR_SOCKET_TIMEOUT);
         }
         try {
+            System.out.println("@Master: try to get resp message 2");
             slave2_phase1_kvm = new KVMessage(s2_socket,TIMEOUT);
+            System.out.println("@Master: got resp2");
         } catch (KVException kve) {
+            System.out.println("@Master: make fake resp2");
             deadSlave = slave2;
-            slave2_phase1_kvm = new KVMessage(ABORT);
+            slave2_phase1_kvm = new KVMessage(ABORT,ERROR_SOCKET_TIMEOUT);
         }
 
         //phase 2
         KVMessage global_decision_kvm = null;
-
+        boolean decision_abort = false;
+        KVException exceptionToThrow = null;
         if (slave1_phase1_kvm.getMsgType().equals(READY) && slave2_phase1_kvm.getMsgType().equals(READY)) {
+            System.out.println("@Master: Global Commit");
             global_decision_kvm = new KVMessage(COMMIT);
         } else {
+            if (slave1_phase1_kvm.getMsgType().equals(READY)) { //grab exception to throw later.
+                exceptionToThrow = new KVException(slave2_phase1_kvm.getMessage());
+            } else
+                exceptionToThrow = new KVException(slave1_phase1_kvm.getMessage());
+            System.out.println("@Master: Global Abort");
+            decision_abort = true;
             global_decision_kvm = new KVMessage(ABORT);
         }
 
         KVMessage s1_ack_kvm = null;
         KVMessage s2_ack_kvm = null;
+        slave1.closeHost(s1_socket);
+        slave2.closeHost(s2_socket);
+        System.out.println("@Master: Sending global decision");
         while (s1_ack_kvm == null || s2_ack_kvm == null) {
             if (s1_ack_kvm == null) {
-                global_decision_kvm.sendMessage(s1_socket);
-                s1_ack_kvm = new KVMessage(s1_socket,TIMEOUT);
-                if (s1_ack_kvm != null && !s1_ack_kvm.getMsgType().equals(ACK))
-                    throw new KVException(ERROR_INVALID_FORMAT);
+                try {
+                    s1_socket = slave1.connectHost(TIMEOUT);
+                    global_decision_kvm.sendMessage(s1_socket);
+                    System.out.println("@Master: Sent msg1");
+                    s1_ack_kvm = new KVMessage(s1_socket,TIMEOUT);
+                    System.out.println("@Master: wait for sent msg1");
+                    if (s1_ack_kvm != null) {
+                        if (!s1_ack_kvm.getMsgType().equals(ACK)) {
+                            System.out.println("@Master: s1 throw exception.");
+                            throw new KVException(ERROR_INVALID_FORMAT);
+                        } else 
+                            System.out.println("@Master: Got ack 1 back");
+                    }
+                } catch (KVException kve) {
+                    slave1.closeHost(s1_socket);
+                }
             }
             if (s2_ack_kvm == null) {
-                global_decision_kvm.sendMessage(s2_socket);
-                s2_ack_kvm = new KVMessage(s2_socket,TIMEOUT);
-                if (s2_ack_kvm != null && !s2_ack_kvm.getMsgType().equals(ACK))
-                    throw new KVException(ERROR_INVALID_FORMAT);
-            }
+                try {
+                    s2_socket = slave2.connectHost(TIMEOUT);
+                    global_decision_kvm.sendMessage(s2_socket);
+                    System.out.println("@Master: Sent msg2");
+                    s2_ack_kvm = new KVMessage(s2_socket,TIMEOUT);
+                    if (s2_ack_kvm != null) {
+                        if (!s2_ack_kvm.getMsgType().equals(ACK)) {
+                            System.out.println("@Master: s2 throw exception.");
+                            throw new KVException(ERROR_INVALID_FORMAT);
+                        } else 
+                            System.out.println("@Master: Got ack 2 back");
+                    }
 
+                } catch (KVException kve) {
+                    slave2.closeHost(s2_socket);
+                }
+            }
+        }
+        System.out.println("@Master: Done with decision");
+        slave1.closeHost(s1_socket);
+        slave2.closeHost(s2_socket);
+
+        if (decision_abort) {
+            System.out.println("@Master: Error somewhere due to abort. Throwing exception.");
+            throw exceptionToThrow;
         }
 
+        // if (isPutReq) { update cache
+        // } else {
+        // }
     }
 
     /**

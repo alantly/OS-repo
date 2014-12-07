@@ -68,16 +68,21 @@ public class TPCRegistrationHandler implements NetworkHandler {
             KVMessage response_kvm = new KVMessage(RESP);
             try {
                 KVMessage kvm = new KVMessage(client);
+                System.out.println("@Regis.Handler: got new register msg: "+ kvm.getMsgType());
                 if (kvm.getMsgType().equals(REGISTER)) {
                     String msg = kvm.getMessage();
                     TPCSlaveInfo slaveInfo = new TPCSlaveInfo(msg);
-                    if (!master.slaveIDs.contains(slaveInfo.getSlaveID())) {
-                        kvm.setMessage("Unsuccessful registration "+ msg);
-                    } else {
+                    if (!this.master.slaveIDs.contains(slaveInfo.getSlaveID()) ||
+                        (this.master.deadSlave != null && slaveInfo.getSlaveID() != this.master.deadSlave.getSlaveID())) {
+                        System.out.println("@Regis.Handler: Sending request to master");
                         master.registerSlave(slaveInfo);
                         kvm.setMessage("Successfully registered "+ msg);
-                        if (!master.slaveIDs.contains(slaveInfo.getSlaveID()))
-                            kvm.setMessage(null);
+                        if (!master.slaveIDs.contains(slaveInfo.getSlaveID())) 
+                            kvm.setMessage("Unsuccessful registration "+ msg);
+                        System.out.println("@Regis.Handler: Results: " + kvm.getMessage());
+                    } else {
+                        System.out.println("@Regis.Handler: Unsuccessful. alive slave trying to reregister.");
+                        kvm.setMessage("Unsuccessful registration "+ msg);
                     }
                     response_kvm.sendMessage(client);
                 }

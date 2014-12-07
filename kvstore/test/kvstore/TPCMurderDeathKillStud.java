@@ -230,7 +230,9 @@ public class TPCMurderDeathKillStud {
         String logPath = tempFile.getPath();	//"bin/log." + slaveID + "@" + ss.getHostname();
         TPCLog log = new TPCLog(logPath,slaveKvs);
         setupLog(log);
+        System.out.println("@MurderTest: Setting up spy");
         log = spy(new TPCLog(logPath, slaveKvs)); //spied for testing
+        System.out.println("@MurderTest: Done Setting up spy");
         LOG = logPath;
         spyLog = log;
 
@@ -262,6 +264,7 @@ public class TPCMurderDeathKillStud {
         @Override
         public boolean matches(Object msg) {
             KVMessage m = (KVMessage) msg;
+            System.out.println("@MurderTest: This is phase1: " + m.getMsgType());
             if (m.getMsgType().equals(KVConstants.PUT_REQ) || m.getMsgType().equals(KVConstants.DEL_REQ)) return true;
             return false;
         }
@@ -273,6 +276,7 @@ public class TPCMurderDeathKillStud {
         @Override
         public boolean matches(Object msg) {
             KVMessage m = (KVMessage) msg;
+            System.out.println("@MurderTest: This is phase2: " + m.getMsgType());
             if (m.getMsgType().equals(KVConstants.COMMIT)) return true;
             return false;
         }
@@ -301,10 +305,13 @@ public class TPCMurderDeathKillStud {
     Answer dieAfterLog = new Answer() {
         @Override
         public Object answer(InvocationOnMock inv){
+            System.out.println("@MurderTest: Doing die after log");
             try{inv.callRealMethod();}catch (Throwable e) { }//shouldn't happen
             Thread rebuild = new Thread(necromancer);
+            System.out.println("@MurderTest: before very long timeout");
             try{Thread.sleep(2*TPCMaster.TIMEOUT);}catch (InterruptedException e){}
             rebuild.start();
+            System.out.println("@MurderTest: Rebuilding log thread end. Kill current.");
             Thread.currentThread().stop(); //naughty. But it works
             return null;
         }
@@ -325,7 +332,7 @@ public class TPCMurderDeathKillStud {
 
         SocketServer ss = new SocketServer(InetAddress.getLocalHost().getHostAddress(), 0);
         KVServer slaveKvs = new KVServer(100, 10);
-
+        System.out.println("@MurderTest: Reviving: " + slaveID);
         TPCLog log = spy(new TPCLog(oldLog, slaveKvs));
         spyLog = log;
         TPCMasterHandler handler = new TPCMasterHandler(slaveID, slaveKvs, log);
@@ -348,18 +355,20 @@ public class TPCMurderDeathKillStud {
 
     /* BEGIN TEST CASE*/
     
-    @Test(timeout = 3000)
+    @Test(timeout = 3000*7)
     @Category(AG_PROJ4_CODE.class)
     @AGTestDetails(points = 2, desc = "Kills the slave during phase 1 after flushing PUT request to log and rebuilds. Checks that the PUT request was aborted.")
     public void testP1DeathAfterLog(){
+        System.out.println("@MurderTest: Start mock slave");
         try{startMockSlave(SLAVE1, 1);} catch (Exception e) {fail("can't start slave");}
+        System.out.println("@MurderTest: finish setup mock slave");
         try{
+            System.out.println("@MurderTest: before test");
             master.handleTPCRequest(p1Death, true);
             fail("Shouldn't succeed");
-        } catch (KVException e){
-
-        }
+        } catch (KVException e){}
         checkBuild();
+        System.out.println("@MurderTest: Finished check");
         // try{
         //     slave1.get(KEY1);
         //     fail("Key was put when it should have failed.");
