@@ -181,9 +181,8 @@ public class TPCMaster {
      */
     public TPCSlaveInfo getSlave(long slaveId) {
         // implement me
-        for (TPCSlaveInfo slave : slaves) {
-            if (slave.getSlaveID() == slaveId)
-                return slave;
+        if (slaveMap.containsKey(slaveId)) {
+            return slaveMap.get(slaveId);
         }
         return null;
     }
@@ -350,7 +349,7 @@ public class TPCMaster {
         String msgkey = msg.getKey();
         String msgtype = msg.getMsgType();
         String value = null;
-        String response_msg;
+        String response_msg = null;
         TPCSlaveInfo slave1 = null;
         
         try {
@@ -369,13 +368,15 @@ public class TPCMaster {
         if (value != null)
             return value;
         // Try getting from first slave
-        slave1 = this.findFirstReplica(msgkey);
-        nSocket = slave1.connectHost(TIMEOUT);
-        msg.sendMessage(nSocket);
-        response = new KVMessage(nSocket, TIMEOUT);
-        value = response.getValue();
-        slave1.closeHost(nSocket);
-        response_msg = response.getMessage();
+        try {
+            slave1 = this.findFirstReplica(msgkey);
+            nSocket = slave1.connectHost(TIMEOUT);
+            msg.sendMessage(nSocket);
+            response = new KVMessage(nSocket, TIMEOUT);
+            value = response.getValue();
+            slave1.closeHost(nSocket);
+            response_msg = response.getMessage();
+        } catch (KVException k) {}
 
         if (response_msg != null && response_msg.equals(ERROR_NO_SUCH_KEY)) {
             throw new KVException(response);
