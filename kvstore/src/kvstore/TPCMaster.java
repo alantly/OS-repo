@@ -181,8 +181,9 @@ public class TPCMaster {
      */
     public TPCSlaveInfo getSlave(long slaveId) {
         // implement me
-        if (slaveMap.containsKey(slaveId)) {
-            return slaveMap.get(slaveId);
+        for (TPCSlaveInfo slave : slaves) {
+            if (slave.getSlaveID() == slaveId)
+                return slave;
         }
         return null;
     }
