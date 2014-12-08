@@ -25,7 +25,7 @@ public class TPCEndToEndTest extends TPCEndToEndTemplate {
     @Test(timeout = 3000)
     public void simplePutGet() {
     	try {
-    		setUp(0);
+    		setUp(0, 0);
     	} catch (Exception e) {}
     	try {
     		client.put("amazonID", "product");
@@ -42,7 +42,7 @@ public class TPCEndToEndTest extends TPCEndToEndTemplate {
     @Test(timeout = 3000)
     public void invalidGet() throws KVException {
     	try {
-    		setUp(0);
+    		setUp(0, 0);
     	} catch (Exception e) {}
     	try {
     		client.get("invalidKey");
@@ -58,7 +58,7 @@ public class TPCEndToEndTest extends TPCEndToEndTemplate {
     @Test(timeout = 30000)
     public void simplePutDel() {
     	try {
-    		setUp(0);
+    		setUp(0, 0);
     	} catch (Exception e) {}
     	try {
     		client.put("steamID", "gameTitle");
@@ -75,7 +75,7 @@ public class TPCEndToEndTest extends TPCEndToEndTemplate {
     @Test(timeout = 30000)
     public void invalidDel() throws KVException {
     	try {
-    		setUp(0);
+    		setUp(0, 0);
     	} catch (Exception e) {}
     	try {
     		client.del("amazonID");
@@ -91,7 +91,7 @@ public class TPCEndToEndTest extends TPCEndToEndTemplate {
     @Test(timeout = kTimeoutDefault)
     public void invalidPut() {
     	try {
-    		setUp(0);
+    		setUp(0, 0);
     	} catch (Exception e) {}
     	Scanner s2 = null;
     	try {
@@ -113,7 +113,7 @@ public class TPCEndToEndTest extends TPCEndToEndTemplate {
     @Test(timeout = kTimeoutDefault)
     public void multipleClient() {
     	try {
-    		setUp(0);
+    		setUp(0, 0);
     	} catch (Exception e) {}
     	try {
     		client.put("amazonID", "product");
@@ -134,7 +134,7 @@ public class TPCEndToEndTest extends TPCEndToEndTemplate {
     @Test(timeout = kTimeoutDefault)
     public void threeClientRequest() {
     	try {
-    		setUp(0);
+    		setUp(0, 0);
     	} catch (Exception e) {}
     	try {
     		client.put("amazon1", "product1");
@@ -158,12 +158,27 @@ public class TPCEndToEndTest extends TPCEndToEndTemplate {
     @Test(timeout = 30000)
     public void handleGetFromMasterCache() {
         try {
-    		setUp(1);
+    		setUp(1, 0);
     	} catch (Exception e) {}
         try {
             assertEquals(client.get("cloudID"), "pictures");
         } catch (KVException k) {
             fail("Should have gotten a value from masterCache");
+        }
+        try {
+    		tearDown();
+    	} catch (InterruptedException i) {}
+    }
+
+    @Test(timeout = 30000)
+    public void handleGetFromSlave() {
+    	try {
+    		setUp(0, 1);
+    	} catch (Exception e) {}
+        try {
+            assertEquals(client.get("cloudID"), "files");
+        } catch (KVException k) {
+            fail("Should have gotten a value from slave");
         }
         try {
     		tearDown();

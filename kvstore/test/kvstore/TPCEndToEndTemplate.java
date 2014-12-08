@@ -34,16 +34,26 @@ public class TPCEndToEndTemplate {
     static final String KEY3 = "0000000000000000000"; //-7869206253219942869
     static final String KEY4 = "3333333333333333333"; //-2511215889438427442
 
-    public void setUp(int option) throws Exception {
+    public void setUp(int masterOption, int slaveOption) throws Exception {
         hostname = InetAddress.getLocalHost().getHostAddress();
 
-        startMaster(option);
+        startMaster(masterOption);
 
         slaveRunners = new HashMap<String, ServerRunner>();
-        startSlave(SLAVE1);
-        startSlave(SLAVE2);
-        startSlave(SLAVE3);
-        startSlave(SLAVE4);
+        switch(slaveOption) {
+            case 1: //Setup slave with key, value
+                startSlave(SLAVE1, 0);
+                startSlave(SLAVE2, 0);
+                startSlave(SLAVE3, slaveOption);
+                startSlave(SLAVE4, 0);
+                break;
+            default:
+                startSlave(SLAVE1, slaveOption);
+                startSlave(SLAVE2, slaveOption);
+                startSlave(SLAVE3, slaveOption);
+                startSlave(SLAVE4, slaveOption);
+                break;
+        }
 
         client = new KVClient(hostname, CLIENTPORT);
         client2 = new KVClient(hostname, CLIENTPORT);
@@ -60,6 +70,9 @@ public class TPCEndToEndTemplate {
         }
 
         client = null;
+        client2 = null;
+        client3 = null;
+        client4 = null;
         master = null;
         slaveRunners = null;
     }
@@ -74,6 +87,7 @@ public class TPCEndToEndTemplate {
 
             default:
                 master = new TPCMaster(NUMSLAVES, new KVCache(1,4));
+                break;
         }
         SocketServer clientSocketServer = new SocketServer(hostname, CLIENTPORT);
         clientSocketServer.addHandler(new TPCClientHandler(master));
@@ -86,7 +100,7 @@ public class TPCEndToEndTemplate {
         Thread.sleep(100);
     }
 
-    protected void startSlave(long slaveID) throws Exception {
+    protected void startSlave(long slaveID, int slaveOption) throws Exception {
         String name = new Long(slaveID).toString();
         ServerRunner sr = slaveRunners.get(name);
         if (sr != null) {
@@ -101,6 +115,14 @@ public class TPCEndToEndTemplate {
     	temp.deleteOnExit();
         String logPath = temp.getPath(); //"bin/log." + slaveID + "@" + ss.getHostname();
         TPCLog log = new TPCLog(logPath, slaveKvs);
+        switch(slaveOption) {
+            case 1:
+                slaveKvs.put("cloudID", "files");
+                break;
+
+            default:
+                break;
+        }
         TPCMasterHandler handler = new TPCMasterHandler(slaveID, slaveKvs, log);
         ss.addHandler(handler);
         ServerRunner slaveRunner = new ServerRunner(ss, name);
