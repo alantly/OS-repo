@@ -115,7 +115,6 @@ public class TPCMasterHandler implements NetworkHandler {
                 KVMessage request_kvm = new KVMessage(master);
                 System.out.println("@Slave: got a new request: " + request_kvm.getMsgType());
                 if (request_kvm.getMsgType().equals(GET_REQ)) {
-
                     String value = kvServer.get(request_kvm.getKey());
                     response_kvm.setMessage(null);
                     response_kvm.setKey(request_kvm.getKey());
@@ -123,8 +122,7 @@ public class TPCMasterHandler implements NetworkHandler {
                     response_kvm.sendMessage(master);
 
                 } else if (request_kvm.getMsgType().equals(DEL_REQ)) {
-
-                    if (kvServer.hasKey(response_kvm.getKey())) {
+                    if (kvServer.hasKey(request_kvm.getKey())) {
                         this.tpcLog.appendAndFlush(request_kvm);
                         vote_response_kvm = new KVMessage(READY);
                     } else {
@@ -133,7 +131,6 @@ public class TPCMasterHandler implements NetworkHandler {
                     vote_response_kvm.sendMessage(master);
 
                 } else if (request_kvm.getMsgType().equals(PUT_REQ)) {
-
                     String check_ready = kvServer.is_valid_key_value(request_kvm.getKey(), request_kvm.getValue());
                     if (check_ready == null) {
                         this.tpcLog.appendAndFlush(request_kvm);
