@@ -113,10 +113,11 @@ public class TPCLog {
         // implement me
         KVMessage kvm_action = null;
         for (KVMessage kvm : entries) {
-            if (kvm.getMsgType().equals(DEL_REQ) || kvm.getMsgType().equals(PUT_REQ)) {
+            if (kvm.getMsgType() == null) {
+                // check for null so we won't call a funciton on a null object
+            } else if (kvm.getMsgType().equals(DEL_REQ) || kvm.getMsgType().equals(PUT_REQ)) {
                 kvm_action = kvm;
-            }
-            else if (kvm.getMsgType().equals(COMMIT)) {
+            } else if (kvm.getMsgType().equals(COMMIT)) {
                 if (kvm_action != null) {
                     if (kvm_action.getMsgType().equals(PUT_REQ)) {
                         System.out.println("@TPCLog: Doing put:" + kvm_action.getKey() + " " + kvm_action.getValue());
