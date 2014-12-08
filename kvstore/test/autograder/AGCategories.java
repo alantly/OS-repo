@@ -38,7 +38,7 @@ public final class AGCategories {
         ServerRunner.class,
         TPCMasterHandlerGetTest.class,
         TPCMasterTest.class,
-        TPCMurderDeathKillStud.class
+        TPCMurderDeathKillStud.class,
     })
     @IncludeCategory(AG_PROJ3_CODE.class)
     @FixMethodOrder(MethodSorters.NAME_ASCENDING)

@@ -52,6 +52,26 @@ public class EndToEndTest extends EndToEndTemplate {
     }
 
     @Test(timeout = kTimeoutDefault)
+    public void spamRequests() {
+        try {
+            client.put("pikachu", "thunder");
+            client.put("squirtle", "water");
+            client.put("charmander", "fire");
+            client.put("steelix", "steel");
+            assertEquals(client.get("pikachu"), "thunder");
+            assertEquals(client.get("squirtle"), "water");
+            assertEquals(client.get("charmander"), "fire");
+            assertEquals(client.get("steelix"), "steel");
+            client.del("pikachu");
+            client.del("steelix");
+            client.del("charmander");
+            client.del("squirtle");
+        } catch (KVException e) {
+            fail("Should not have thrown an exception.");
+        }
+    }
+
+    @Test(timeout = kTimeoutDefault)
     @Category(AG_PROJ3_CODE.class)
     @AGTestDetails(points = 1, desc = "Testing put with invalid arguments after combining all the pieces")
     public void invalidPut() {

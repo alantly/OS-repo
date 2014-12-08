@@ -245,6 +245,10 @@ public class TPCMurderDeathKillStud {
             doAnswer(dieAfterLog).when(log).appendAndFlush(argThat(new isPutDel1())); //kill in phase 1 after log
             break;
 
+        case 2:
+            doAnswer(dieAfterLog).when(log).appendAndFlush(argThat(new isPutDel2())); //kill in phase 2 after log
+            break;
+
         default:
             System.out.println("WARNING: INVALID ARGUMENTS");
             break;
@@ -325,7 +329,6 @@ public class TPCMurderDeathKillStud {
 
         SocketServer ss = new SocketServer(InetAddress.getLocalHost().getHostAddress(), 0);
         KVServer slaveKvs = new KVServer(100, 10);
-
         TPCLog log = spy(new TPCLog(oldLog, slaveKvs));
         spyLog = log;
         TPCMasterHandler handler = new TPCMasterHandler(slaveID, slaveKvs, log);
@@ -348,51 +351,95 @@ public class TPCMurderDeathKillStud {
 
     /* BEGIN TEST CASE*/
     
-    @Test(timeout = 3000)
+    @Test(timeout = 30000)
     @Category(AG_PROJ4_CODE.class)
     @AGTestDetails(points = 2, desc = "Kills the slave during phase 1 after flushing PUT request to log and rebuilds. Checks that the PUT request was aborted.")
     public void testP1DeathAfterLog(){
+
         try{startMockSlave(SLAVE1, 1);} catch (Exception e) {fail("can't start slave");}
         try{
             master.handleTPCRequest(p1Death, true);
             fail("Shouldn't succeed");
-        } catch (KVException e){
-
-        }
+        } catch (KVException e){}
         checkBuild();
-        // try{
-        //     slave1.get(KEY1);
-        //     fail("Key was put when it should have failed.");
-        // }
-        // catch(KVException e){
-        //     assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
-        // }
 
-        // //Verify log integrity by putting a key successfully, then killing and rebuilding slave.
-        // try{
-        //     master.handleTPCRequest(verify,true);
-        //     assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
-        //     verify(spyLog, atLeast(2)).appendAndFlush((KVMessage) anyObject());
-        // } catch (KVException e){
-        //     fail("Put on live slave shouldn't fail");
-        // }
+        try{
+            slave1.get(KEY1);
+            fail("Key was put when it should have failed.");
+        }
+        catch(KVException e){
+            assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
+        }
+        
+        //Verify log integrity by putting a key successfully, then killing and rebuilding slave.
+        try{
+            master.handleTPCRequest(verify,true);
+            assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
+            verify(spyLog, atLeast(2)).appendAndFlush((KVMessage) anyObject());
+        } catch (KVException e){
+            fail("Put on live slave shouldn't fail");
+        }
 
-        // try {necromancy(SLAVE1, LOG);} catch (Exception e) {fail("Could not rebuild slave.");}
-        // checkBuild();
-        // try{
-        //     assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
-        // } catch (KVException e){
-        //     fail("Server not properly rebuilt.");
-        // }
-        // try{
-        //     System.out.println(slave1.get(KEY1));
-        //     fail("Key was put when it should have failed.");
-        // }
-        // catch(KVException e){
-        //     assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
-        // }
+        try {necromancy(SLAVE1, LOG);} catch (Exception e) {fail("Could not rebuild slave.");}
+        checkBuild();
+        try{
+            assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
+        } catch (KVException e){
+            fail("Server not properly rebuilt.");
+        }
+        try{
+            System.out.println(slave1.get(KEY1));
+            fail("Key was put when it should have failed.");
+        }
+        catch(KVException e){
+            assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
+        }
 
     }
 
-  
+    @Test(timeout = 30000)
+    @Category(AG_PROJ4_CODE.class)
+    @AGTestDetails(points = 2, desc = "Kills the slave during phase 2 after flushing PUT request to log and rebuilds. Checks that the PUT request was aborted.")
+    public void testP2DeathAfterLog(){
+
+        try{startMockSlave(SLAVE1, 2);} catch (Exception e) {fail("can't start slave");}
+        try{
+            master.handleTPCRequest(p1Death, true);
+        } catch (KVException e){
+            fail("It should've succeeded");
+        }
+        checkBuild();
+
+        try{
+            assertEquals(slave1.get(KEY1), "GOBEARS");
+        }
+        catch(KVException e){
+            fail("Key was not put when it should have succeeded.");
+        }
+        
+        //Verify log integrity by putting a key successfully, then killing and rebuilding slave.
+        try{
+            master.handleTPCRequest(verify,true);
+            assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
+            verify(spyLog, atLeast(2)).appendAndFlush((KVMessage) anyObject());
+        } catch (KVException e){
+            fail("Put on live slave shouldn't fail");
+        }
+
+        try {necromancy(SLAVE1, LOG);} catch (Exception e) {fail("Could not rebuild slave.");}
+        checkBuild();
+        try{
+            assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
+        } catch (KVException e){
+            fail("Server not properly rebuilt.");
+        }
+        try{
+            assertEquals(slave1.get(KEY1), "GOBEARS");
+        }
+        catch(KVException e){
+            fail("Key was not put when it should have succeeded.");
+        }
+
+    }
+
 }
