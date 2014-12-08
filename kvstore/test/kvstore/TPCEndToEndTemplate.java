@@ -11,6 +11,9 @@ public class TPCEndToEndTemplate {
 
     String hostname;
     KVClient client;
+    KVClient client2;
+    KVClient client3;
+    KVClient client4;
     TPCMaster master;
     ServerRunner masterClientRunner;
     ServerRunner masterSlaveRunner;
@@ -44,6 +47,9 @@ public class TPCEndToEndTemplate {
         startSlave(SLAVE4);
 
         client = new KVClient(hostname, CLIENTPORT);
+        client2 = new KVClient(hostname, CLIENTPORT);
+        client3 = new KVClient(hostname, CLIENTPORT);
+        client4 = new KVClient(hostname, CLIENTPORT);
     }
 
     @After

@@ -78,6 +78,35 @@ public class TPCEndToEndTest extends TPCEndToEndTemplate {
     	} catch (KVException e) {
     		assertEquals(e.getMessage(), KVConstants.ERROR_OVERSIZED_VALUE);
     	}
+    }
 
+    @Test(timeout = kTimeoutDefault)
+    public void multipleClient() {
+    	try {
+    		client.put("amazonID", "product");
+    		client.put("amazonID2", "wishlist");
+    		try { Thread.sleep(100); } catch (InterruptedException ie) {  }
+    		client.get("amazonID");
+    		client2.get("amazonID2");
+    		assertEquals(client.get("amazonID"), "product");
+    		assertEquals(client.get("amazonID2"), "wishlist");
+    	} catch (KVException k) {
+    		fail("Unexpected KVException on valid put/get request");
+    	}
+    }
+
+    @Test(timeout = kTimeoutDefault)
+    public void threeClientRequest() {
+    	try {
+    		client.put("amazon1", "product1");
+    		client2.put("amazon2", "product2");
+    		client3.put("amazon3", "product3");
+    		//try { Thread.sleep(100); } catch (InterruptedException ie) {  }
+    		assertEquals(client4.get("amazon2"), "product2");
+    		assertEquals(client4.get("amazon1"), "product1");
+    		assertEquals(client4.get("amazon3"), "product3");
+    	} catch (KVException k) {
+    		fail("Unexpected KVException on valid put/get request");
+    	}
     } 
 }

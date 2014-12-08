@@ -247,6 +247,7 @@ public class TPCMurderDeathKillStud {
 
         case 2:
             doAnswer(dieAfterLog).when(log).appendAndFlush(argThat(new isPutDel2())); //kill in phase 2 after log
+            break;
 
         default:
             System.out.println("WARNING: INVALID ARGUMENTS");
