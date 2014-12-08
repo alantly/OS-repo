@@ -207,8 +207,7 @@ public class TPCMaster {
             blockUntilRegisterComplete();
         } catch (InterruptedException ite) {}        
 
-        String key = msg.getKey();
-        TPCSlaveInfo slave1 = findFirstReplica(key);
+        TPCSlaveInfo slave1 = findFirstReplica(msg.getKey());
         TPCSlaveInfo slave2 = findSuccessor(slave1);
         Socket s1_socket = null;
         Socket s2_socket = null;
@@ -319,9 +318,15 @@ public class TPCMaster {
             throw exceptionToThrow;
         }
 
-        // if (isPutReq) { update cache
-        // } else {
-        // }
+        //update cache
+        Lock cacheLock = this.masterCache.getLock(msg.getKey());
+        cacheLock.lock();
+        if (isPutReq) { 
+            this.masterCache.put(msg.getKey(),msg.getValue());
+        } else {
+            this.masterCache.del(msg.getKey());
+        }
+        cacheLock.unlock();
     }
 
     /**
