@@ -34,11 +34,10 @@ public class TPCEndToEndTemplate {
     static final String KEY3 = "0000000000000000000"; //-7869206253219942869
     static final String KEY4 = "3333333333333333333"; //-2511215889438427442
 
-    @Before
-    public void setUp() throws Exception {
+    public void setUp(int option) throws Exception {
         hostname = InetAddress.getLocalHost().getHostAddress();
 
-        startMaster();
+        startMaster(option);
 
         slaveRunners = new HashMap<String, ServerRunner>();
         startSlave(SLAVE1);
@@ -52,7 +51,6 @@ public class TPCEndToEndTemplate {
         client4 = new KVClient(hostname, CLIENTPORT);
     }
 
-    @After
     public void tearDown() throws InterruptedException {
         masterClientRunner.stop();
         masterSlaveRunner.stop();
@@ -66,8 +64,17 @@ public class TPCEndToEndTemplate {
         slaveRunners = null;
     }
 
-    protected void startMaster() throws Exception {
-        master = new TPCMaster(NUMSLAVES, new KVCache(1,4));
+    protected void startMaster(int startOption) throws Exception {
+        switch(startOption) {
+            case 1: // Start with masterCache having one key, value
+                KVCache masterCache = new KVCache(1, 4);
+                masterCache.put("cloudID", "pictures");
+                master = new TPCMaster(NUMSLAVES, masterCache);
+                break;
+
+            default:
+                master = new TPCMaster(NUMSLAVES, new KVCache(1,4));
+        }
         SocketServer clientSocketServer = new SocketServer(hostname, CLIENTPORT);
         clientSocketServer.addHandler(new TPCClientHandler(master));
         masterClientRunner = new ServerRunner(clientSocketServer, "masterClient");
@@ -89,9 +96,9 @@ public class TPCEndToEndTemplate {
 
         SocketServer ss = new SocketServer(InetAddress.getLocalHost().getHostAddress(), 0);
         KVServer slaveKvs = new KVServer(100, 10);
-	Long id = new Long(slaveID);
-	File temp = File.createTempFile(id.toString() + "calbandgreat",".txt");
-	temp.deleteOnExit();
+    	Long id = new Long(slaveID);
+    	File temp = File.createTempFile(id.toString() + "calbandgreat",".txt");
+    	temp.deleteOnExit();
         String logPath = temp.getPath(); //"bin/log." + slaveID + "@" + ss.getHostname();
         TPCLog log = new TPCLog(logPath, slaveKvs);
         TPCMasterHandler handler = new TPCMasterHandler(slaveID, slaveKvs, log);
