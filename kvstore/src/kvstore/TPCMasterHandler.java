@@ -61,15 +61,13 @@ public class TPCMasterHandler implements NetworkHandler {
             throws KVException {
         // implement me
         try {
-            System.out.println("@TPCMasterHandler: Sending Register command");
             String msg = Long.toString(slaveID) + "@" + server.getHostname() + ":" + Integer.toString(server.getPort());
             KVMessage kvm = new KVMessage(REGISTER, msg);
             Socket s = new Socket(masterHostname, 9090);
             kvm.sendMessage(s);
             KVMessage response = new KVMessage(s);
-            System.out.println("@TPCMasterHandler: got registeration resp: "+response.getMessage());
             if (!response.getMsgType().equals(RESP) || response.getMessage().equals("Unsuccessful registration "+ msg)) {
-                System.out.println("@TPCMasterHandler: unsuccessful registeration");
+                System.out.println("@TPCMasterHandler: unsuccessful reg: "+response.getMessage());
                 throw new KVException(ERROR_INVALID_FORMAT);
             }
         } catch (UnknownHostException uhe) {
@@ -126,7 +124,6 @@ public class TPCMasterHandler implements NetworkHandler {
 
                 } else if (request_kvm.getMsgType().equals(DEL_REQ)) {
 
-                    System.out.println("@Slave: Doing phase 1 del req.");
                     if (kvServer.hasKey(response_kvm.getKey())) {
                         this.tpcLog.appendAndFlush(request_kvm);
                         vote_response_kvm = new KVMessage(READY);
@@ -137,12 +134,9 @@ public class TPCMasterHandler implements NetworkHandler {
 
                 } else if (request_kvm.getMsgType().equals(PUT_REQ)) {
 
-                    System.out.println("@Slave: Doing phase 1 put req.");
                     String check_ready = kvServer.is_valid_key_value(request_kvm.getKey(), request_kvm.getValue());
                     if (check_ready == null) {
-                        System.out.println("@Slave: About to flush: " + request_kvm.getMsgType() + " " + request_kvm.getKey()+ " " +request_kvm.getValue());
                         this.tpcLog.appendAndFlush(request_kvm);
-                        System.out.println("@Slave: Finished flush");
                         vote_response_kvm = new KVMessage(READY);
                     } else {
                         vote_response_kvm = new KVMessage(ABORT, check_ready);
@@ -170,6 +164,7 @@ public class TPCMasterHandler implements NetworkHandler {
                 }
             }
             catch (KVException kve) {
+                System.out.println("@Slave: handle req error: " +kve.getMessage());
                 response_kvm = kve.getKVMessage();
                 try {
                     response_kvm.sendMessage(master);

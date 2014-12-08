@@ -37,7 +37,6 @@ public class TPCLog {
     public void appendAndFlush(KVMessage entry) {
         entries.add(entry);
         flushToDisk();
-        System.out.println("@TPCLog: Appending to log: " + getLastEntry());
     }
 
     /**
@@ -110,11 +109,10 @@ public class TPCLog {
      */
     public void rebuildServer() throws KVException {
         loadFromDisk();
-        System.out.println("@TPCLog: Rebuilding");
+        System.out.println("@TPCLog: Rebuilding from Log");
         // implement me
         KVMessage kvm_action = null;
         for (KVMessage kvm : entries) {
-            System.out.println("@TPCLog: Current Message: " + kvm.getMsgType());
             if (kvm.getMsgType().equals(DEL_REQ) || kvm.getMsgType().equals(PUT_REQ)) {
                 kvm_action = kvm;
             }

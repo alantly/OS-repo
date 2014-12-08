@@ -71,12 +71,10 @@ public class TPCRegistrationHandler implements NetworkHandler {
                 if (kvm.getMsgType().equals(REGISTER)) {
                     String msg = kvm.getMessage();
                     TPCSlaveInfo slaveInfo = new TPCSlaveInfo(msg);
-                    System.out.println("@Regis.Handler: Sending request to master");
                     master.registerSlave(slaveInfo);
                     response_kvm.setMessage("Successfully registered "+ msg);
-                    if (!master.slaveIDs.contains(slaveInfo.getSlaveID())) 
+                    if (!master.slaveMap.containsKey(slaveInfo.getSlaveID())) 
                         response_kvm.setMessage("Unsuccessful registration "+ msg);
-                    System.out.println("@Regis.Handler: Register results: " + response_kvm.getMessage());
                     response_kvm.sendMessage(client);
                 }
             } catch (KVException kve) {
