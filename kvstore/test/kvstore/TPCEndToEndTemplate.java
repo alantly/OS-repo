@@ -34,17 +34,26 @@ public class TPCEndToEndTemplate {
     static final String KEY3 = "0000000000000000000"; //-7869206253219942869
     static final String KEY4 = "3333333333333333333"; //-2511215889438427442
 
-    @Before
-    public void setUp() throws Exception {
+    public void setUp(int masterOption, int slaveOption) throws Exception {
         hostname = InetAddress.getLocalHost().getHostAddress();
 
-        startMaster();
+        startMaster(masterOption);
 
         slaveRunners = new HashMap<String, ServerRunner>();
-        startSlave(SLAVE1);
-        startSlave(SLAVE2);
-        startSlave(SLAVE3);
-        startSlave(SLAVE4);
+        switch(slaveOption) {
+            case 1: //Setup slave with key, value
+                startSlave(SLAVE1, 0);
+                startSlave(SLAVE2, 0);
+                startSlave(SLAVE3, slaveOption);
+                startSlave(SLAVE4, 0);
+                break;
+            default:
+                startSlave(SLAVE1, slaveOption);
+                startSlave(SLAVE2, slaveOption);
+                startSlave(SLAVE3, slaveOption);
+                startSlave(SLAVE4, slaveOption);
+                break;
+        }
 
         client = new KVClient(hostname, CLIENTPORT);
         client2 = new KVClient(hostname, CLIENTPORT);
@@ -52,7 +61,6 @@ public class TPCEndToEndTemplate {
         client4 = new KVClient(hostname, CLIENTPORT);
     }
 
-    @After
     public void tearDown() throws InterruptedException {
         masterClientRunner.stop();
         masterSlaveRunner.stop();
@@ -62,12 +70,25 @@ public class TPCEndToEndTemplate {
         }
 
         client = null;
+        client2 = null;
+        client3 = null;
+        client4 = null;
         master = null;
         slaveRunners = null;
     }
 
-    protected void startMaster() throws Exception {
-        master = new TPCMaster(NUMSLAVES, new KVCache(1,4));
+    protected void startMaster(int startOption) throws Exception {
+        switch(startOption) {
+            case 1: // Start with masterCache having one key, value
+                KVCache masterCache = new KVCache(1, 4);
+                masterCache.put("cloudID", "pictures");
+                master = new TPCMaster(NUMSLAVES, masterCache);
+                break;
+
+            default:
+                master = new TPCMaster(NUMSLAVES, new KVCache(1,4));
+                break;
+        }
         SocketServer clientSocketServer = new SocketServer(hostname, CLIENTPORT);
         clientSocketServer.addHandler(new TPCClientHandler(master));
         masterClientRunner = new ServerRunner(clientSocketServer, "masterClient");
@@ -79,7 +100,7 @@ public class TPCEndToEndTemplate {
         Thread.sleep(100);
     }
 
-    protected void startSlave(long slaveID) throws Exception {
+    protected void startSlave(long slaveID, int slaveOption) throws Exception {
         String name = new Long(slaveID).toString();
         ServerRunner sr = slaveRunners.get(name);
         if (sr != null) {
@@ -89,11 +110,19 @@ public class TPCEndToEndTemplate {
 
         SocketServer ss = new SocketServer(InetAddress.getLocalHost().getHostAddress(), 0);
         KVServer slaveKvs = new KVServer(100, 10);
-	Long id = new Long(slaveID);
-	File temp = File.createTempFile(id.toString() + "calbandgreat",".txt");
-	temp.deleteOnExit();
+    	Long id = new Long(slaveID);
+    	File temp = File.createTempFile(id.toString() + "calbandgreat",".txt");
+    	temp.deleteOnExit();
         String logPath = temp.getPath(); //"bin/log." + slaveID + "@" + ss.getHostname();
         TPCLog log = new TPCLog(logPath, slaveKvs);
+        switch(slaveOption) {
+            case 1:
+                slaveKvs.put("cloudID", "files");
+                break;
+
+            default:
+                break;
+        }
         TPCMasterHandler handler = new TPCMasterHandler(slaveID, slaveKvs, log);
         ss.addHandler(handler);
         ServerRunner slaveRunner = new ServerRunner(ss, name);
