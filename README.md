@@ -3,6 +3,9 @@ CS162 Operating Systems Repo
 Project solutions are under branches
 release/project#/checkpoint3
 
+Compare these branches to their base to see changes from skeleton.
+ex. compare p1-base to release/project1/checkpoint3
+
 Pintos is a simple instructional operating system framework for the 80x86 architecture. The software supports kernel threads,
 loading and running user programs, and a file system, but it implements all of these in a very simple way.
 In the Pintos projects, you and your project team will strengthen its support in all three of these
