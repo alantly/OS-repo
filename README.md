@@ -1,4 +1,4 @@
-CS162 Operating Systems Repo
+Operating Systems Repo
 
 Project solutions are under branches
 release/project#/checkpoint3
